@@ -1,0 +1,54 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[redirects]]
+  from = "/api/grupos"
+  to = "/.netlify/functions/grupos"
+  status = 200
+
+# MI SML · API privada (valida la sesión de Auth0). El comodín deja que la función responda 404 JSON a otras rutas /api/mi-sml/*.
+[[redirects]]
+  from = "/api/mi-sml/me"
+  to = "/.netlify/functions/mi-sml-me"
+  status = 200
+
+[[redirects]]
+  from = "/api/mi-sml/*"
+  to = "/.netlify/functions/mi-sml-me"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# MI SML: zona privada del cliente. Fuera de buscadores y sin caché (cuando exista sesión, nada de cliente debe quedar en caché compartida).
+[[headers]]
+  for = "/mi-sml"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
+
+[[headers]]
+  for = "/mi-sml/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
+
+[[headers]]
+  for = "/api/mi-sml/*"
+  [headers.values]
+    Cache-Control = "no-store"
+    X-Robots-Tag = "noindex, nofollow"

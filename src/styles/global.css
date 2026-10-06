@@ -1,0 +1,2542 @@
+/* Striking Motion Lab — hoja de estilos de la web vigente. Solo contiene reglas cuyas clases existen en los componentes actuales;
+   las reglas de generaciones anteriores (Slot antiguo, Umbral, hero previo…) están aisladas en src/_legacy/styles/legacy.css. */
+:root {
+  --bg: #050608; --fg: #d9dde6; --dim: #7a8396; --line: rgba(217, 221, 230, .16); --accent: #8fb3ff;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --display: "Unbounded", var(--sans);
+  --pad-l: clamp(3.75rem, 9vw, 7rem);
+}
+/* =====================================================================================================
+   SISTEMA TIPOGRÁFICO Y ESPACIAL COMÚN — FASE 1 (solo lógica; ninguna regla de componente usa aún estos tokens de
+   tamaño/espacio). Lo único que ya se consume son los ALIAS de familia y color de más abajo, de valor idéntico al
+   que tenían en cada escena: sin cambio visual. Las escenas conservan sus variables (--cs-*, --al-*, --sx-*, --b-*,
+   --ent-*, --u-*) por identidad visual; ahora apuntan a estas fuentes únicas.
+   Las globales --display / --sans / --mono (Unbounded + pilas del sistema) NO se tocan en esta fase: las siguen
+   usando HUD, Footer, Reserva, StickyCTA, ProofChen y etiquetas .label (decisión pendiente para la Fase 2).
+   ===================================================================================================== */
+:root {
+  /* Roles (una sola definición de cada pila) */
+  --font-display: "Big Shoulders Display", "Barlow Condensed", "Arial Narrow", Impact, sans-serif; /* titulares, nombres, disciplinas, conceptos */
+  --font-sans: "Inter Tight", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;             /* cuerpo, explicación, información comercial */
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;           /* SOLO metadata: capítulos, números, indicadores, HUD */
+  --font-serif: "Fraunces", Georgia, "Times New Roman", serif;                                         /* editorial: Entrada y Umbral */
+
+  /* Escala de tamaño (objetivo aproximado; no se fuerza). Rango previsto → equivalente actual más cercano */
+  --fs-micro: .6875rem;   /* 11px · 10–11: .62–.70rem (≈80 decl.) */
+  --fs-small: .8125rem;   /* 13px · 12–13: .74–.82rem (≈60 decl.) */
+  --fs-body: 1rem;        /* 16px · 15–17: .9–1.05rem (≈30 decl.) */
+  --fs-lead: 1.2rem;      /* 19px · 18–21: 1.1–1.3rem (≈10 decl.) */
+  --fs-heading: clamp(1.75rem, 1.2rem + 2vw, 3rem);   /* 28–48px */
+  --fs-display: clamp(3.125rem, 1rem + 7vw, 7rem);    /* 50px+ */
+
+  /* Line-height */
+  --lh-display: .92;      /* display .85–1.0 (hoy: .78 … 1.0, 12 valores) */
+  --lh-heading: 1.08;
+  --lh-tight: 1.35;       /* contenido secundario 1.3–1.45 */
+  --lh-read: 1.55;        /* lectura 1.45–1.65 */
+
+  /* Tracking (solo dos usos reales: metadata en mayúsculas y titulares condensados) */
+  --ls-meta: .12em;
+  --ls-display: .01em;
+
+  /* Espaciado (4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 px) */
+  --sp-1: .25rem; --sp-2: .5rem; --sp-3: .75rem; --sp-4: 1rem;
+  --sp-6: 1.5rem; --sp-8: 2rem; --sp-12: 3rem; --sp-16: 4rem;
+
+  /* Color común a las escenas nocturnas (mismos valores que repetían cs/al/sx/b/u) */
+  --c-ink: #efebe3; --c-soft: #cfd3db; --c-mute: #a3abb9;
+  --c-hair: rgba(239, 235, 227, .24); --c-red: #e5202b;
+  --c-shadow: 0 1px 2px rgba(0, 0, 0, .9), 0 0 22px rgba(0, 0, 0, .65);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: var(--bg); color: var(--fg); font-family: var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; overflow-x: clip; }
+/* overflow-x vive solo en html: si body también lo tuviera, dejaría de propagarse al viewport, body pasaría a ser contenedor de scroll y position:sticky (.stage) dejaría de funcionar. */
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+button:disabled { opacity: .35; cursor: default; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+ul, ol { list-style: none; }
+
+/* capas */
+.scene { position: fixed; inset: 0; z-index: 0; }
+/* .experience es una capa transparente a pantalla completa por encima del canvas: sin esto, aunque .ex__body
+   (o cualquier hijo) diga pointer-events:none, el propio contenedor .experience seguiría "atrapando" el
+   tap/click antes de que llegue al mundo 3D. Se desactiva aquí y se devuelve la interactividad de siempre a
+   cada capítulo con la regla siguiente — así el resto de escenas (03-06) no cambian en nada. */
+.experience { position: relative; z-index: 2; pointer-events: none; }
+.experience > .chapter { pointer-events: auto; }
+/* EXPLORE: el luchador del mundo 3D es una forma más de elegir disciplina. Aquí SÍ dejamos pasar el tap/click al canvas
+   por defecto; el panel de decisión (.ex__panel) reactiva pointer-events:auto. */
+#character-select { pointer-events: none; }
+
+/* capítulo + stage sticky */
+.chapter { position: relative; }
+.stage {
+  position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 3.5rem 1.25rem 3rem var(--pad-l);
+}
+.threshold { height: 50vh; position: relative; }
+/* Umbral HOME → EXPLORE: aloja el BRIDGE (cuerpo → combate → mapa), 180vh de scroll. Su progreso lo reparten Bridge.jsx / BridgeHall.jsx
+   (BRIDGE_END, BRIDGE_OUT_END en scrollState.js). El resto de umbrales siguen siendo tramos cortos de 50vh. */
+.threshold[data-threshold="entrada>character-select"] { height: 180vh; }
+
+/* tipografía / utilidades */
+.label { font-family: var(--mono); font-size: .72rem; letter-spacing: .12em; color: var(--dim); }
+.h2 { font-size: clamp(1.5rem, 4vw, 2.75rem); font-weight: 600; margin-bottom: 1.25rem; }
+.ph-text { color: var(--dim); font-family: var(--mono); font-size: .85rem; max-width: 60ch; line-height: 1.6; }
+.ph { border: 1px dashed var(--line); color: var(--dim); font-family: var(--mono); font-size: .8rem; display: grid; place-items: center; text-align: center; padding: 1rem; }
+.btn { border: 1px solid var(--fg); padding: .8rem 1.4rem; align-self: flex-start; margin-top: 1.5rem; }
+.btn:hover:not(:disabled) { background: var(--fg); color: var(--bg); }
+.link { text-decoration: underline; text-underline-offset: 3px; color: var(--dim); }
+.chip { border: 1px solid var(--line); padding: .4rem .9rem; margin-right: .5rem; margin-top: .5rem; }
+.chip[data-on="true"] { border-color: var(--accent); color: var(--accent); }
+dt { font-family: var(--mono); font-size: .7rem; letter-spacing: .1em; color: var(--dim); }
+dd { margin-top: .15rem; }
+
+/* 01 entrada — el mundo es 3D (Scene/Environment/Entrada); aquí solo el aviso de scroll (interacción
+   real) y la narrativa progresiva. Nada de HUD decorativo (esquinas, coordenadas): si no aporta
+   navegación/información real, no vive aquí. */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Tipografía propia de la Entrada, escopada a .ent (no toca --display/--sans/--mono globales, que
+   siguen usándolos el footer y otros paneles): --ent-display es una serif editorial para la frase
+   narrativa (con presencia pero sin bloque gigantesco); --ent-title es la condensada deportiva ya
+   cargada para Descubrir (mismo carácter atlético, sin pedir una fuente nueva) para la palabra corta
+   "Entra."; --ent-sans para el cuerpo de apoyo; --ent-mono ÚNICAMENTE para DESLIZA, el único elemento
+   con función real. */
+.ent {
+  --ent-display: var(--font-serif);
+  --ent-title: var(--font-display);
+  --ent-sans: var(--font-sans);
+  --ent-mono: var(--font-mono);
+}
+
+.ent__cue { position: absolute; left: 50%; bottom: 2.5rem; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: .6rem; }
+.ent__cue-line { width: 1px; height: 2.5rem; background: linear-gradient(var(--fg), transparent); animation: ent-cue 1.8s ease-in-out infinite; }
+.ent__cue-label { white-space: nowrap; font-family: var(--ent-mono); }
+
+/* Narrativa de Escena 01 (curiosidad → entra → vívelo): bloque estrecho y discreto en el tercio
+   inferior, deliberadamente lejos del centro donde vive el escenario y, más adelante, el personaje —
+   el espacio 3D es el protagonista, el texto acompaña. .ent__caption no tiene altura propia (todos
+   sus momentos van en position:absolute, ver .ent__momento): así un momento oculto no reserva sitio
+   para el siguiente y el bloque nunca crece más de lo que ocupa el momento visible en cada instante. */
+.ent__caption {
+  /* Los CTA (.ent__actions) ocupan el ancla inferior (clamp) y ≈ 6,9 rem de alto; la narrativa vive encima con 2,5 rem de aire. */
+  /* 11.9rem = alto real de .ent__actions con los tres CTA (≈10,4 rem) + 1,5 rem de aire. */
+  position: absolute; left: 50%; bottom: calc(clamp(5.5rem, 13vh, 8rem) + 11.9rem); transform: translateX(-50%);
+  width: min(78vw, 26rem); text-align: center; pointer-events: none;
+}
+.ent__caption p { margin: 0; }
+.ent__momento { position: absolute; left: 0; right: 0; bottom: 0; }
+.ent__entra {
+  font-family: var(--ent-title); font-weight: 800; text-transform: uppercase;
+  font-size: clamp(2rem, 6vw, 3.2rem); line-height: 1; letter-spacing: .01em;
+  color: var(--fg); text-shadow: 0 2px 20px rgba(0, 0, 0, .6);
+}
+.ent__entraSub { margin-top: .6rem !important; color: var(--dim); font-family: var(--ent-sans); font-size: .78rem; letter-spacing: .08em; }
+
+/* Último momento de la Entrada: el claim en tres líneas (sobre los CTA) */
+.ent__claim {
+  font-family: var(--ent-title); font-weight: 900; text-transform: uppercase;
+  font-size: clamp(1.7rem, 5vw, 2.7rem); line-height: .98; letter-spacing: .01em;
+  color: #fff; text-shadow: 0 2px 20px rgba(0, 0, 0, .65);
+}
+.ent__claim span { display: block; }
+/* CTA de la Entrada: mismo ancla inferior que .ent__caption, fuera del bloque aria-hidden */
+.ent__actions {
+  position: absolute; left: 50%; bottom: clamp(5.5rem, 13vh, 8rem); transform: translateX(-50%);
+  width: min(78vw, 26rem); display: flex; flex-direction: column; align-items: center; gap: .55rem; pointer-events: auto;
+}@media (max-width: 700px) { .ent__actions { bottom: clamp(4.75rem, 11vh, 6.5rem); } 
+}
+
+@keyframes ent-cue {
+  0% { transform: scaleY(0); transform-origin: top; }
+  48% { transform: scaleY(1); transform-origin: top; }
+  52% { transform-origin: bottom; }
+  100% { transform: scaleY(0); transform-origin: bottom; }
+}
+
+/* Foto integrada con el esqueleto: capa fija ENTRE el canvas 3D y el DOM. `screen` suma la foto a las líneas:
+   nada tapa el esqueleto (las líneas se ven por encima de las zonas oscuras). Pertenece SOLO a la Escena 01
+   (se monta desde Entrada.jsx): su opacidad y su `visibility` los fija PhotoBackdrop.jsx frame a frame, atados
+   al scroll de la Entrada (llega a 0 real, no a un mínimo) — nada de transición CSS aquí, iría a destiempo del scroll. */
+.photo { position: fixed; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; mix-blend-mode: screen; opacity: .6; }
+.photo__img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; transform-origin: 50% 42%; will-change: transform; display: block; filter: brightness(.92) contrast(1.16) saturate(.55); }
+/* Vignette más cerrado (35%→28% del radio limpio, negro algo más denso en el borde): comprime el
+   grid/laboratorio periférico y deja el centro —donde vive el personaje— con más separación tonal,
+   sin tocar el asset de la foto. */
+.photo__shade {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 45%, rgba(0, 0, 0, 0) 28%, rgba(0, 0, 0, .82) 100%),
+    linear-gradient(to bottom, rgba(0, 0, 0, .55), rgba(0, 0, 0, 0) 25%, rgba(0, 0, 0, 0) 65%, rgba(0, 0, 0, .6));
+}
+
+@media (max-width: 700px) {
+  .ent__caption { bottom: calc(clamp(4.75rem, 11vh, 6.5rem) + 11.9rem); }
+
+}
+
+/* ===================================================================================================================
+   BRIDGE — umbral educativo/cinematográfico 01→02. Vive dentro del propio umbral (Threshold.jsx), pegado
+   (sticky) mientras dura su tramo de scroll — mismo patrón que .stage en los capítulos. Reutiliza la
+   tipografía de Entrada (--ent-*): mismo mundo visual, ningún activo ni fuente nueva.
+
+   FASE 3 (dirección de arte): el recinto YA NO se dibuja aquí. Es geometría 3D real, en el mismo Canvas
+   que Entrada y Character Select (ver Scene/Environment/Bridge/BridgeHall.jsx) — pilares, cerchas,
+   suelo y luz físicos que la cámara atraviesa de verdad. .bridge__stage se queda TRANSPARENTE a
+   propósito (sin fondo propio) para que ese mundo se vea detrás del texto sin ningún plano 2D
+   compitiendo con él. Lo único que sigue viviendo aquí es lenguaje de cámara/montaje — viñeta, barras
+   de cine, destello de corte — nunca arquitectura simulada. --bridge-p sigue disponible para esas capas;
+   los cambios de iluminación por momento (antes en [data-moment] contra la escenografía CSS) ahora los
+   lleva BridgeHall.jsx contra luces reales, leyendo el mismo progreso de scroll. */
+.bridge { position: fixed; top: 0; left: 0; right: 0; height: 100vh; height: 100svh; pointer-events: none; opacity: 0; visibility: hidden; } /* capa fija: ver Bridge.jsx (tick) */
+.bridge__stage {
+  position: relative; height: 100%; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--ent-sans, var(--sans));
+  --bridge-p: 0;
+}
+
+.bridge__vignette {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0) calc(30% - var(--bridge-p) * 4%), rgba(0, 0, 0, .78) 100%);
+}
+
+/* Barras de cine: fijas, discretas, crecen levemente hacia el cierre (última "toma" del Bridge, justo
+   antes del relevo a Character Select) — el mismo recurso que un fundido a negro parcial en un tráiler. */
+.bridge__bar { position: absolute; left: 0; right: 0; background: var(--bg); z-index: 3; pointer-events: none; }
+.bridge__bar--top { top: 0; height: calc(1.1rem + var(--bridge-p) * 1.6rem); }
+.bridge__bar--bottom { bottom: 0; height: calc(1.1rem + var(--bridge-p) * 1.6rem); }
+
+/* Corte de cámara entre momentos: glow radial breve (no un flash blanco plano). */
+.bridge__flash {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, rgba(217, 221, 230, .5), transparent 62%);
+  mix-blend-mode: screen;
+}
+
+.bridge__caption { position: relative; z-index: 4; width: min(84vw, 34rem); text-align: center; pointer-events: none; }
+.bridge__momento { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); display: grid; gap: .6rem; margin: 0; justify-items: center; }
+
+/* Nivel 1 — titular principal: debe dominar el encuadre. Se sube ligeramente el techo del clamp respecto
+   a la versión anterior para reforzar el contraste frente a los niveles 2 y 3 de abajo. */
+.bridge__a-title, .bridge__b-title, .bridge__cierre-top {
+  display: block; font-family: var(--ent-title, var(--display)); font-weight: 800; text-transform: uppercase;
+  font-size: clamp(1.5rem, 4.9vw, 2.6rem); line-height: 1.06; letter-spacing: .01em;
+  color: var(--fg); text-shadow: 0 2px 20px rgba(0, 0, 0, .6);
+  /* Contorno de legibilidad: muy fino y a baja opacidad, solo para separar el blanco del fondo
+     cuando este queda claro/luminoso detrás — no debe leerse como un efecto de texto. */
+  -webkit-text-stroke: .4px rgba(0, 0, 0, .45);
+}
+/* Nivel 2 — explicación: sube de tamaño y gana peso respecto a la versión anterior para leerse
+   claramente por encima del nivel 3 (antes competía en tamaño con .bridge__a-cierre/.bridge__b-cierre
+   y quedaba aplastada entre ambos). Sigue en --dim y sans, subordinada al titular. */
+.bridge__sub {
+  display: block; font-family: var(--ent-sans); font-weight: 500;
+  font-size: clamp(.92rem, 2.5vw, 1.08rem); line-height: 1.35; letter-spacing: .01em; color: var(--dim);
+}
+
+/* B — El cuerpo: el texto vive dentro de un "calibre" (bracket) que lo mide por ambos lados — sugiere
+   altura/alcance/rango sin caer en infografía plana ni en una silueta literal. */
+.bridge__b-frame { position: relative; display: block; padding: 0 clamp(1.6rem, 5vw, 2.8rem); }
+.bridge__b-copy { display: grid; gap: .6rem; }
+.bridge__b-bracket {
+  position: absolute; top: -12%; bottom: -12%; width: 1px; background: var(--line);
+  transform-origin: 50% 50%;
+}
+.bridge__b-bracket::before, .bridge__b-bracket::after {
+  content: ''; position: absolute; left: -.5rem; right: -.5rem; height: 1px; background: var(--line);
+}
+.bridge__b-bracket::before { top: 0; }
+.bridge__b-bracket::after { bottom: 0; }
+.bridge__b-bracket--l { left: 0; }
+.bridge__b-bracket--r { right: 0; }
+
+/* C — Tyson / McGregor: dos encuadres enfrentados, ya con el contraste de composición pedido — el espacio
+   donde más adelante entrarán sus assets animados, sin construir todavía ningún personaje. Izquierda:
+   estrecho, bajo, cerca (corta distancia/explosividad). Derecha: ancho, alto, más aire (alcance/rango). */
+.bridge__c-arena { position: relative; display: flex; align-items: flex-end; justify-content: center; gap: clamp(1.4rem, 4vw, 2.6rem); width: 100%; }
+.bridge__c-divider {
+  position: absolute; left: 50%; top: 6%; bottom: 6%; width: 1px; transform: translateX(-50%);
+  background: linear-gradient(var(--line), transparent 88%); opacity: .55;
+}
+.bridge__c-slot { position: relative; display: grid; gap: .55rem; justify-items: center; text-align: center; }
+.bridge__c-slot[data-i="0"] { width: 38%; align-self: flex-end; }
+.bridge__c-slot[data-i="1"] { width: 54%; align-self: flex-start; padding-top: 1.4rem; }
+.bridge__c-figure {
+  position: relative; display: block; width: 100%; pointer-events: none;
+  border-bottom: 1px solid var(--line); opacity: .5;
+}
+.bridge__c-slot[data-i="0"] .bridge__c-figure {
+  aspect-ratio: 3 / 4;
+  background: radial-gradient(ellipse 55% 65% at 50% 62%, rgba(217, 221, 230, .16), transparent 74%);
+}
+.bridge__c-slot[data-i="1"] .bridge__c-figure {
+  aspect-ratio: 16 / 9;
+  background: radial-gradient(ellipse 85% 50% at 50% 68%, rgba(217, 221, 230, .11), transparent 76%);
+}
+.bridge__c-case { margin: 0; }
+.bridge__c-nombre {
+  display: block; font-family: var(--ent-title, var(--display)); font-weight: 700; text-transform: uppercase;
+  font-size: clamp(.92rem, 2.3vw, 1.25rem); color: var(--fg);
+}
+.bridge__c-texto { display: block; margin-top: .2rem; font-family: var(--ent-sans); font-size: .78rem; color: var(--dim); }
+
+/* D — Mapa: pila con profundidad real (perspective + translateZ), no una lista plana — la cámara "se abre"
+   (ver tween de .bridge__d-funnel en Bridge.jsx) mientras cada paso llega desde más atrás. */
+.bridge__d-funnel { position: relative; display: grid; gap: .8rem; perspective: 900px; justify-items: center; }
+.bridge__d-funnel::before {
+  content: ''; position: absolute; left: 50%; top: -4%; bottom: -4%; width: 1px; transform: translateX(-50%);
+  background: linear-gradient(var(--line), transparent 90%); opacity: .4;
+}
+.bridge__d-layer { position: relative; transform-style: preserve-3d; }
+.bridge__d-layer[data-i="0"] { transform: translateZ(0) scale(1); }
+.bridge__d-layer[data-i="1"] { transform: translateZ(-34px) scale(.95); opacity: .96; }
+.bridge__d-layer[data-i="2"] { transform: translateZ(-68px) scale(.9); opacity: .9; }
+.bridge__d-layer[data-i="3"] { transform: translateZ(-102px) scale(.85); opacity: .84; }
+.bridge__d-layer[data-i="4"] { transform: translateZ(-136px) scale(.8); opacity: .8; }
+.bridge__d-paso {
+  display: block;
+  font-family: var(--ent-sans); font-weight: 500; color: var(--fg);
+  font-size: clamp(.82rem, 2vw, .98rem); line-height: 1.4; text-wrap: pretty; max-width: 30ch;
+  /* Halo de contraste: sin esto el texto pierde legibilidad cuando las luces/estructuras del fondo
+     quedan justo detrás de las letras (momento D). Mismo recurso que .bridge__a-title/.bridge__b-title,
+     reforzado con una segunda capa más ceñida — nunca una caja ni un panel sólido. */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .85), 0 2px 18px rgba(0, 0, 0, .7);
+  -webkit-text-stroke: .3px rgba(0, 0, 0, .4);
+}
+.bridge__d-layer .bridge__d-paso {
+  font-family: var(--ent-title, var(--display)); font-weight: 700; text-transform: uppercase; letter-spacing: .01em;
+}
+.bridge__arrow { display: block; margin: 0 0 .35rem; color: var(--dim); opacity: .5; }
+
+/* Cierre — la cámara converge en un único foco de luz sobre STRIKING (.bridge__cierre-spot, animado en
+   Bridge.jsx) y desde ahí se revelan las 3 disciplinas en una sola línea horizontal: la misma disposición
+   en la que llegarán los 3 luchadores en Character Select. */
+.bridge__cierre { position: relative; }
+.bridge__cierre-spot {
+  position: absolute; left: 50%; top: 38%; width: 15rem; height: 15rem; transform: translate(-50%, -50%);
+  border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(217, 221, 230, .18), transparent 70%);
+  filter: blur(1px);
+}@media (max-width: 700px) {
+  /* Referencia: móvil ~390px de ancho. El objetivo no es escalar todo por igual, sino recomponer cada
+     bloque para que quepa con aire y sin que ningún elemento invada al siguiente. */
+  .bridge__caption { width: min(88vw, 26rem); }
+  .bridge__bar--top { height: calc(.9rem + var(--bridge-p) * 1.1rem); }
+  .bridge__bar--bottom { height: calc(.9rem + var(--bridge-p) * 1.1rem); }
+  .bridge__momento { gap: .6rem; }
+
+  /* A/B — título/apoyo/cierre: ancho de línea controlado para que el titular rompa en puntos cómodos y
+     quede claramente separado del resto (espacio seguro respecto a los bordes del caption). */
+  .bridge__a-title, .bridge__b-title, .bridge__cierre-top {
+    line-height: 1.16; letter-spacing: .02em; max-width: 18ch; margin-inline: auto;
+  }
+  .bridge__b-frame { padding: 0 1.1rem; }
+  .bridge__b-copy { gap: .5rem; }
+
+  /* C — Tyson / McGregor: en desktop son dos encuadres uno junto al otro; en columna (obligado por el
+     ancho de 390px) su altura combinada se salía del alto de pantalla y el segundo caso quedaba pegado
+     al primero o cortado por las barras de cine. Se acortan los encuadres (proporción más baja, no solo
+     más pequeños) y se reduce el ancho de cada slot, que es lo que de verdad controla su altura al estar
+     ligados por aspect-ratio — así cada caso respira y no invade al de al lado. */
+  .bridge__c-arena { flex-direction: column; align-items: center; gap: .85rem; }
+  .bridge__c-slot[data-i="0"], .bridge__c-slot[data-i="1"] { width: 60%; align-self: center; padding-top: 0; }
+  .bridge__c-slot { gap: .4rem; }
+  .bridge__c-slot[data-i="0"] .bridge__c-figure { aspect-ratio: 1 / 1; }
+  .bridge__c-slot[data-i="1"] .bridge__c-figure { aspect-ratio: 21 / 9; }
+  .bridge__c-divider { left: 6%; right: 6%; top: 50%; bottom: auto; width: auto; height: 1px; transform: none; background: linear-gradient(90deg, transparent, var(--line), transparent); }
+  .bridge__c-texto { max-width: 30ch; margin-inline: auto; }
+
+  /* D — Mapa: mismo texto, línea algo más corta para que ningún paso roce el borde del caption, y menos
+     separación vertical entre pasos para que los cuatro quepan con margen sobre la barra inferior. */
+  .bridge__d-funnel { gap: .6rem; }
+  .bridge__d-paso { max-width: 19ch; }
+  .bridge__d-layer[data-i="1"] { transform: translateZ(-18px) scale(.97); }
+  .bridge__d-layer[data-i="2"] { transform: translateZ(-36px) scale(.94); }
+  .bridge__d-layer[data-i="3"] { transform: translateZ(-54px) scale(.91); }
+  .bridge__d-layer[data-i="4"] { transform: translateZ(-72px) scale(.88); }
+
+  /* Cierre — el halo de luz estaba pensado para pantallas anchas; a 390px ocupaba una porción del
+     encuadre demasiado grande en relación al texto que enmarca. Se reduce para que quede como acento,
+     no como elemento que compite por el espacio. */
+  .bridge__cierre-spot { width: 10rem; height: 10rem; }
+
+}
+
+
+/* ===================================================================================================================
+   EXPLORE (V22 · paso 3) — una sola experiencia de decisión: ¿cómo quieres entrenar? → ¿qué disciplina? → su información.
+   Sustituye al antiguo Bridge + Character Select + parte de Disciplines (el bloque «02 Descubrir» ya no existe).
+   Composición: panel de decisión + 3D se reparten la pantalla (Scene/Environment/cells.js#exploreRegion debe coincidir):
+     · apaisado (aspect ≥ 1,1): panel a la izquierda (≈40 %), 3D a la derecha (60 %).
+     · vertical (aspect < 1,1):  3D en la franja superior (32 % del alto), panel debajo (68 %) con scroll propio.
+   El canvas queda libre para el tap/click (los luchadores 3D también eligen disciplina); solo el panel recoge eventos.
+   Tipografía: display condensada (nombres), sans (explicación), mono (solo metadatos). Color: blanco roto + gris; el acento es el
+   de la disciplina elegida (--ex-accent) y, sin elección, el acento general.
+   Sin hover para entender el estado: lo elegido se marca con forma (marcador relleno, barra lateral, etiqueta «Seleccionado»).
+   =================================================================================================================== */
+.ex {
+  --ex-ink: #f4f6fa;
+  --ex-soft: rgba(226, 231, 240, .8);
+  --ex-mute: rgba(226, 231, 240, .55);
+  --ex-hair: rgba(217, 221, 230, .18);
+  --ex-accent: var(--accent);
+  --ex-rgb: 143, 179, 255;
+  --ex-display: var(--font-display);
+  --ex-sans: var(--font-sans);
+  --ex-mono: var(--font-mono);
+}
+.ex .stage { display: block; padding: 0; }
+.ex__body { position: absolute; inset: 0; pointer-events: none; }
+
+/* Luz de ambiente del color de la disciplina elegida, sobre la región del 3D. */
+.ex__glow {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 60%; pointer-events: none; opacity: 0;
+  background: radial-gradient(closest-side at 50% 52%, rgba(var(--ex-rgb), .22), rgba(var(--ex-rgb), .07) 55%, transparent 80%);
+  mix-blend-mode: screen; transition: opacity .7s ease;
+}
+
+/* PANEL (apaisado: columna izquierda con fundido hacia el 3D) */
+.ex__panel {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 42%; min-width: 25rem; max-width: 44rem;
+  pointer-events: auto;
+  background: linear-gradient(90deg, rgba(5, 6, 8, .96) 0%, rgba(5, 6, 8, .92) 74%, rgba(5, 6, 8, 0) 100%);
+}
+.ex__scroll {
+  position: relative; height: 100%; overflow-y: auto; overscroll-behavior: auto; -webkit-overflow-scrolling: touch;
+  padding: 4.5rem 3.25rem 5rem var(--pad-l);
+  scrollbar-width: thin; scrollbar-color: rgba(217, 221, 230, .28) transparent;
+}
+
+/* Cabecera */
+.ex__title {
+  margin: 0; font-family: var(--ex-display); font-weight: 900; text-transform: uppercase; color: #fff;
+  font-size: clamp(2.2rem, 1.2rem + 2.4vw, 3.4rem); line-height: .98; letter-spacing: .01em; max-width: 13ch;
+  text-shadow: var(--tx-head-shadow);
+}
+.ex__intro { margin: .9rem 0 0; font-family: var(--ex-sans); font-size: 1.05rem; line-height: 1.45; color: var(--ex-soft); max-width: 32ch; }
+
+/* 1 · Formas de entrenar */
+.ex__block { margin-top: 2rem; }
+.ex__modes, .ex__discs { list-style: none; margin: 0; padding: 0; }
+.ex__mode { border-top: 1px solid var(--ex-hair); }
+.ex__mode:last-child { border-bottom: 1px solid var(--ex-hair); }
+.ex__modeBtn {
+  display: grid; grid-template-columns: .6rem 1fr; column-gap: .85rem; align-items: start; width: 100%; min-height: 3.5rem;
+  padding: .85rem 0; text-align: left; color: var(--ex-soft);
+}
+.ex__modeBtn::before {
+  content: ''; grid-row: 1 / span 2; width: .6rem; height: .6rem; margin-top: .38rem;
+  border: 1px solid var(--ex-mute); background: transparent; transition: background .2s ease, border-color .2s ease;
+}
+.ex__mode[data-on="true"] .ex__modeBtn::before { background: var(--ex-accent); border-color: var(--ex-accent); }
+.ex__modeName {
+  grid-column: 2; font-family: var(--ex-display); font-weight: 800; text-transform: uppercase;
+  font-size: 1.3rem; line-height: 1.05; letter-spacing: .015em; color: var(--ex-soft);
+}
+.ex__modeLine { grid-column: 2; margin-top: .3rem; font-family: var(--ex-sans); font-size: .92rem; line-height: 1.4; color: var(--ex-mute); max-width: 34ch; }
+.ex__mode[data-on="true"] .ex__modeName { color: #fff; }
+.ex__mode[data-on="true"] .ex__modeLine { color: var(--ex-soft); }
+.ex__modeDetail { display: grid; gap: .7rem; padding: .15rem 0 1.15rem 1.45rem; animation: ex-in .28s ease both; }
+.ex__text { margin: 0; font-family: var(--ex-sans); font-size: .95rem; line-height: 1.55; color: var(--ex-soft); max-width: 46ch; }
+.ex__text--soft { color: var(--ex-mute); }
+.ex__hl { display: grid; margin: 0; font-family: var(--ex-display); font-weight: 800; text-transform: uppercase; font-size: 1.2rem; line-height: 1.1; color: #fff; }
+.ex__hl span:last-child { color: var(--ex-accent); }
+.ex__tags { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0; padding: 0; list-style: none; }
+.ex__tags li { padding: .25rem .55rem; border: 1px solid var(--ex-hair); font-family: var(--ex-mono); font-size: .7rem; line-height: 1.3; letter-spacing: .03em; color: var(--ex-soft); }
+.ex__note { margin: 1rem 0 0; font-family: var(--ex-sans); font-weight: 700; font-size: .95rem; line-height: 1.4; color: #fff; }
+
+/* 2 · Disciplinas */
+.ex__block--disc { margin-top: 2.6rem; }
+.ex__h {
+  margin: 0 0 .8rem; font-family: var(--ex-display); font-weight: 900; text-transform: uppercase; color: #fff;
+  font-size: clamp(1.8rem, 1rem + 1.8vw, 2.5rem); line-height: 1; letter-spacing: .01em; text-shadow: var(--tx-head-shadow);
+}
+
+.ex__disc { position: relative; border-top: 1px solid var(--ex-hair); border-left: 3px solid transparent; padding-left: .9rem; transition: border-color .25s ease, opacity .25s ease; }
+.ex__disc:last-child { border-bottom: 1px solid var(--ex-hair); }
+.ex__disc[data-on="true"] { border-left-color: var(--ex-accent); }
+.ex__disc[data-dim="true"] { opacity: .66; }
+.ex__discBtn { display: grid; gap: .3rem; justify-items: start; width: 100%; min-height: 4.5rem; padding: 1rem 0; text-align: left; }
+.ex__discName {
+  font-family: var(--ex-display); font-weight: 900; text-transform: uppercase; color: var(--ex-soft);
+  font-size: clamp(1.7rem, 1.1rem + 1.4vw, 2.2rem); line-height: 1; letter-spacing: .012em;
+}
+.ex__disc[data-on="true"] .ex__discName { color: #fff; text-shadow: var(--tx-head-shadow); }
+.ex__discLine { font-family: var(--ex-sans); font-size: .92rem; line-height: 1.4; color: var(--ex-mute); max-width: 34ch; }
+.ex__disc[data-on="true"] .ex__discLine { color: var(--ex-soft); }
+.ex__discTag { margin-top: .15rem; font-family: var(--ex-mono); font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: var(--ex-accent); }
+
+/* Contenido de la disciplina elegida */
+.ex__detail { padding: 0 0 1.4rem; animation: ex-in .32s ease both; }
+.ex__tagline { margin: 0 0 .5rem; font-family: var(--ex-display); font-weight: 800; text-transform: uppercase; font-size: 1.15rem; letter-spacing: .03em; color: var(--ex-accent); }
+.ex__pick { margin: 0 0 .4rem; font-family: var(--ex-sans); font-weight: 700; font-size: .92rem; line-height: 1.4; color: #fff; }
+.ex__pick span { font-family: var(--ex-mono); font-weight: 500; font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ex-mute); margin-right: .4rem; }
+.ex__pick i { font-style: normal; color: var(--ex-accent); }
+.ex__dh {
+  display: flex; align-items: center; gap: .7rem; margin: 1.35rem 0 .5rem;
+  font-family: var(--ex-mono); font-weight: 500; font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--ex-accent);
+}
+.ex__dh::after { content: ''; flex: 1; height: 1px; background: var(--ex-hair); }
+.ex__detail .ex__text + .ex__text { margin-top: .7rem; }
+.ex__attrs { display: flex; flex-wrap: wrap; gap: .3rem 1rem; margin: 0; padding: 0; list-style: none; }
+.ex__attrs li { font-family: var(--ex-display); font-weight: 800; text-transform: uppercase; font-size: 1.2rem; line-height: 1.15; letter-spacing: .02em; color: #fff; }
+.ex__gloss { display: grid; gap: .65rem; margin: 0; }
+.ex__gloss dt { font-family: var(--ex-sans); font-weight: 700; font-size: .95rem; letter-spacing: 0; color: #fff; }
+.ex__gloss dd { margin: .1rem 0 0; font-family: var(--ex-sans); font-size: .92rem; line-height: 1.5; color: var(--ex-soft); max-width: 44ch; }
+.ex__reset {
+  margin-top: 1.4rem; min-height: 2.75rem; padding: 0; font-family: var(--ex-mono); font-size: .72rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ex-soft); text-decoration: underline; text-underline-offset: .35em;
+}
+
+/* Vídeo local del personaje (solo en vertical: ver Explore.jsx#useStacked). Negro puro + mix-blend-mode: se funde con el fondo. */
+.ex__media { height: min(34svh, 20rem); margin: .8rem 0 .2rem; }
+.ex__media video { display: block; width: 100%; height: 100%; object-fit: contain; mix-blend-mode: screen; cursor: pointer; }
+
+@keyframes ex-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* Hover solo como refuerzo en escritorio: el estado nunca depende de él. */
+@media (hover: hover) and (pointer: fine) {
+  .ex__modeBtn:hover .ex__modeName, .ex__discBtn:hover .ex__discName { color: #fff; }
+  .ex__disc[data-dim="true"]:hover { opacity: .9; }
+  .ex__reset:hover { color: #fff; }
+
+}
+
+/* VERTICAL (móvil / tablet vertical): 3D arriba, panel debajo con scroll propio. Mismo corte que cells.js (aspect 1,1). */
+@media (max-aspect-ratio: 11/10) {
+  .ex__glow { top: 0; right: 0; bottom: auto; left: 0; width: auto; height: 32%; }
+  .ex__panel {
+    top: 32%; left: 0; right: 0; bottom: 0; width: auto; min-width: 0; max-width: none;
+    background: linear-gradient(180deg, rgba(5, 6, 8, 0) 0, rgba(5, 6, 8, .94) 1.6rem, rgba(5, 6, 8, .97) 100%);
+  }
+  .ex__scroll { padding: 1.8rem 1.25rem 6rem 1.25rem; }
+  .ex__title { font-size: clamp(1.9rem, 8.4vw, 2.6rem); max-width: 14ch; }
+  .ex__intro { font-size: 1rem; }
+  .ex__block { margin-top: 1.6rem; }
+  .ex__block--disc { margin-top: 2.1rem; }
+  .ex__modeName { font-size: 1.2rem; }
+  .ex__modeBtn { min-height: 3.75rem; }
+  .ex__discBtn { min-height: 4.75rem; }
+  .ex__discName { font-size: 1.75rem; }
+  .ex__text, .ex__modeLine, .ex__discLine, .ex__gloss dd { max-width: none; }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ex__modeDetail, .ex__detail { animation: none; }
+  .ex__glow, .ex__disc { transition: none; }
+
+}
+
+/* 03 METHOD (V22 · paso 4) — cabecera + cinco pasos + cierre. Mismos tipos y tokens que EXPLORE (Big Shoulders Display / Inter Tight /
+   JetBrains Mono), acotados a #asesoria-lab. Escritorio: una pantalla fija, el paso en curso se despliega (lo fija `substage`).
+   Móvil (≤700px): flujo vertical, todos los pasos abiertos, sin pin, sin hover, sin animación. */
+#asesoria-lab {
+  --al-display: var(--font-display);
+  --al-sans: var(--font-sans);
+  --al-mono: var(--font-mono);
+  --al-ink: var(--c-ink);
+  --al-soft: var(--c-soft);
+  --al-mute: var(--c-mute);
+  --al-shadow: var(--c-shadow);
+  --al-panel: rgba(5, 6, 8, .78);
+}
+#asesoria-lab .stage { display: block; padding: 0; }
+.al__wrap {
+  box-sizing: border-box; height: 100%; display: grid; align-content: center; gap: var(--sp-4) var(--sp-12);
+  padding: 4.5rem 1.25rem 3.5rem var(--pad-l); overflow-y: auto; text-shadow: var(--al-shadow);
+}
+.al__head { min-width: 0; }
+.al__titular {
+  margin: 0; font-family: var(--al-display); font-weight: 900; text-transform: uppercase; color: var(--al-ink);
+  font-size: clamp(2.1rem, 4.6vw, 4.4rem); line-height: .96; letter-spacing: .004em; text-wrap: balance;
+}
+.al__titular span { display: block; }
+.al__titular span:last-child { color: var(--accent); }
+
+/* Pasos */
+.al__steps { list-style: none; margin: 0; padding: 0; min-width: 0; max-width: 40rem; }
+.al__step { border-top: 1px solid var(--line); }
+.al__step:last-child { border-bottom: 1px solid var(--line); }
+.al__stepHead {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: .1rem .75rem; width: 100%; min-height: 2.75rem; margin: 0; padding: .6rem 0;
+  text-align: left; background: none; border: 0; color: inherit; font: inherit; cursor: pointer;
+}
+h3.al__stepHead { cursor: default; }
+.al__num { font-family: var(--al-mono); font-size: .75rem; letter-spacing: .14em; color: var(--al-mute); }
+.al__name { font-family: var(--al-display); font-weight: 900; text-transform: uppercase; font-size: clamp(1.35rem, 2.2vw, 1.9rem); line-height: 1; letter-spacing: .02em; color: var(--al-mute); }
+.al__tag { font-family: var(--al-mono); font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+.al__step[data-open="true"] .al__num { color: var(--accent); }
+.al__step[data-open="true"] .al__name { color: var(--al-ink); }
+.al__stepBody { display: grid; gap: var(--sp-3); padding: 0 0 var(--sp-4) 2.6rem; }
+.al__step[data-open="false"] .al__stepBody { display: none; }
+.al__stepText { margin: 0; max-width: 40ch; font-family: var(--al-sans); font-weight: 600; font-size: 1.0625rem; line-height: 1.5; color: var(--al-ink); text-wrap: pretty; }
+.al__stepHl { margin: 0; font-family: var(--al-sans); font-weight: 600; font-size: 1rem; line-height: 1.5; color: var(--accent); }
+.al__dots { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-1) 0; font-family: var(--al-sans); font-weight: 500; font-size: 1rem; line-height: 1.5; color: var(--al-soft); }
+.al__dots li:not(:last-child)::after { content: "·"; margin: 0 .55em; color: var(--al-mute); }
+
+/* Evaluación inicial (dentro del paso 02) */
+.al__eval { display: grid; gap: var(--sp-2); max-width: 30rem; padding: var(--sp-4); border: 1px solid var(--accent); background: var(--al-panel); }
+.al__evalKicker { margin: 0; font-family: var(--al-mono); font-size: .75rem; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); }
+.al__evalHead { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-4); }
+.al__evalTitle { margin: 0; font-family: var(--al-display); font-weight: 900; text-transform: uppercase; font-size: clamp(1.7rem, 3vw, 2.4rem); line-height: 1; color: var(--al-ink); }
+.al__evalPrice { margin: 0; font-family: var(--al-display); font-weight: 900; font-size: clamp(1.7rem, 3vw, 2.4rem); line-height: 1; color: var(--al-ink); white-space: nowrap; }
+.al__evalText { margin: 0; font-family: var(--al-sans); font-weight: 500; font-size: 1rem; line-height: 1.5; color: var(--al-ink); text-wrap: pretty; }
+.al__evalNote { margin: 0; font-family: var(--al-sans); font-weight: 500; font-size: .9375rem; line-height: 1.5; color: var(--al-soft); text-wrap: pretty; }
+.al__evalCtas { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); margin-top: var(--sp-2); }
+.al__cta { min-height: 2.75rem; padding: .7rem 1.2rem; font-family: var(--al-sans); font-weight: 700; font-size: .9375rem; letter-spacing: .06em; text-transform: uppercase; line-height: 1.15; cursor: pointer; }
+.al__cta--main { background: var(--al-ink); color: var(--bg); border: 1px solid var(--al-ink); }
+.al__cta--sub { background: transparent; color: var(--al-ink); border: 1px solid var(--line); }
+.al__cta:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.al__cta:active { opacity: .85; }
+.al__evalMore { margin: var(--sp-2) 0 0; display: grid; gap: var(--sp-2); }
+.al__evalMore div { display: grid; gap: .1rem; padding-top: var(--sp-2); border-top: 1px solid var(--line); }
+.al__evalMore dt { font-family: var(--al-mono); font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.al__evalMore dd { margin: 0; font-family: var(--al-sans); font-size: .9375rem; line-height: 1.5; color: var(--al-soft); }
+
+/* Cierre */
+.al__cierre { margin: 0; display: grid; font-family: var(--al-display); font-weight: 900; text-transform: uppercase; font-size: clamp(1.4rem, 2.4vw, 2.1rem); line-height: 1.02; color: var(--al-ink); }
+.al__cierre span:last-child { color: var(--accent); }
+
+@media (hover: hover) {
+  .al__stepHead:hover .al__name { color: var(--al-ink); }
+  .al__cta--main:hover { background: transparent; color: var(--al-ink); }
+  .al__cta--sub:hover { border-color: var(--al-ink); }
+
+}
+
+/* Escritorio: dos columnas (cabecera + cierre | pasos). */
+@media (min-width: 901px) {
+  .al__wrap { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-areas: "head steps" "cierre steps"; align-content: center; align-items: center; }
+  .al__head { grid-area: head; align-self: end; }
+  .al__steps { grid-area: steps; }
+  .al__cierre { grid-area: cierre; align-self: start; margin-top: var(--sp-6); }
+
+}
+@media (min-width: 901px) and (max-height: 760px) {
+  .al__wrap { padding-top: 3.75rem; padding-bottom: 2.5rem; }
+  .al__stepBody { gap: var(--sp-2); padding-bottom: var(--sp-3); }
+  .al__eval { padding: var(--sp-3); }
+
+}
+/* Tablet (701–900px): una columna, pin conservado. */
+@media (min-width: 701px) and (max-width: 900px) {
+  .al__wrap { gap: var(--sp-3); }
+  .al__steps { max-width: none; }
+
+}
+
+/* MÓVIL — estaciones del protocolo sobre la máquina 3D: stage fijo (sin panel de documento), cinco estaciones visibles, solo la activa con cuerpo.
+   El capítulo conserva un runway de scroll (min-height) para que el recorrido siga siendo vertical y lo gobierne `substage`. */
+#asesoria-lab.chapter--flow { min-height: 380svh; }
+.chapter--flow .stage { position: sticky; top: 0; height: 100svh; overflow: hidden; }
+.chapter--flow .al__wrap {
+  height: 100%; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between;
+  padding: 4.5rem 1.25rem 5.25rem; box-sizing: border-box;
+}
+.chapter--flow .al__head { flex: none; }
+.chapter--flow .al__titular { font-size: clamp(1.25rem, 6.4vw, 1.7rem); margin: 0; }
+.chapter--flow .al__steps { max-width: none; margin-top: auto; }
+.chapter--flow .al__stepHead { padding: .7rem 0; min-height: 2.75rem; width: 100%; text-align: left; display: flex; align-items: baseline; gap: .8rem; }
+.chapter--flow .al__name { font-size: 1.05rem; }
+.chapter--flow .al__step[data-state="on"] .al__name { font-size: 1.35rem; }
+.chapter--flow .al__tag { display: none; }
+.chapter--flow .al__stepBody { padding: 0 0 var(--sp-3) 2.2rem; gap: var(--sp-2); }
+.chapter--flow .al__stepText { font-size: 1rem; max-width: none; }
+.chapter--flow .al__dots, .chapter--flow .al__stepHl { font-size: .9375rem; }
+.chapter--flow .al__eval { max-width: none; margin-top: var(--sp-1); }
+.chapter--flow .al__evalCtas { flex-direction: column; }
+.chapter--flow .al__cta { width: 100%; min-height: 3rem; }
+.chapter--flow .al__cierre { margin: var(--sp-3) 0 0; font-size: clamp(1.1rem, 5.6vw, 1.5rem); }
+/* Evaluación plegada: una línea que se abre solo si la persona decide profundizar. */
+.al__evalOpen { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); width: 100%; min-height: 2.75rem; padding: .6rem .9rem; border: 0; border-left: 2px solid var(--accent); background: rgba(5, 6, 8, .55); color: var(--al-ink); font-family: var(--al-display); font-weight: 900; text-transform: uppercase; font-size: 1rem; letter-spacing: .04em; cursor: pointer; }
+.al__evalOpen:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* CTA fijo: se retira mientras la evaluación local está abierta (no compite con sus CTAs). */
+:root[data-al-eval="true"] .scta { opacity: 0; visibility: hidden; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .al__cta { transition: none; } 
+}
+
+/* 05 proof */
+.pf { display: grid; grid-template-columns: minmax(10rem, 1fr) 3fr; gap: 2rem; align-items: start; }@media (max-width: 700px) { .pf { grid-template-columns: 1fr; } 
+}
+
+/* 06 reserva */
+.rs__paths { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+.rs__path { border: 1px solid var(--line); padding: 2rem 1.25rem; text-align: left; font-size: clamp(1rem, 2.4vw, 1.6rem); font-weight: 600; }
+.rs__path:hover { border-color: var(--accent); }
+.rs__panel { margin-top: 2rem; display: flex; flex-direction: column; }
+
+/* velo de transición */
+.veil { position: fixed; inset: 0; z-index: 5; pointer-events: none; opacity: 0; display: grid; place-items: center;
+  background: radial-gradient(ellipse at center, rgba(5, 6, 8, .35), rgba(5, 6, 8, .92)); }
+.veil__label { font-family: var(--mono); font-size: .8rem; letter-spacing: .14em; color: var(--fg); }
+.veil__bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--accent); transform-origin: left; transform: scaleX(0); }
+
+/* UI */
+.hud { position: fixed; top: 0; left: 0; right: 0; z-index: 10; display: flex; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; font-family: var(--mono); font-size: .72rem; letter-spacing: .1em; pointer-events: none; }
+.hud__debug { color: var(--accent); }
+.hud__bar { position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--line); }
+.hud__bar i { display: block; height: 100%; background: var(--fg); transform-origin: left; transform: scaleX(0); }
+.nav { position: fixed; left: .75rem; top: 50%; transform: translateY(-50%); z-index: 10; }
+.nav ul { display: grid; gap: .6rem; }
+.nav li { position: relative; padding-left: .55rem; }
+/* marcador del capítulo activo: una guía vertical fina que crece desde el número, en vez de solo
+   cambiar el color del texto — se lee como "estás aquí" dentro de una secuencia de capítulos. */
+.nav li::before {
+  content: ''; position: absolute; left: 0; top: 50%; width: 1px; height: 0;
+  background: var(--accent); transform: translateY(-50%); transition: height .35s ease;
+}
+.nav li[data-on="true"]::before { height: 1.4rem; }
+.nav button {
+  display: flex; align-items: center; gap: .6rem; font-family: var(--mono); font-size: .72rem;
+  color: var(--dim); opacity: .55; transition: color .35s ease, opacity .35s ease;
+}
+.nav li[data-on="true"] button { color: var(--fg); opacity: 1; }
+.nav__l { max-width: 0; overflow: hidden; white-space: nowrap; transition: max-width .4s; }
+.nav button:hover .nav__l, .nav button:focus-visible .nav__l,
+.nav li[data-on="true"] .nav__l { max-width: 12rem; }
+.controls { position: fixed; right: 1rem; bottom: 1rem; z-index: 10; display: flex; gap: .5rem; }
+.controls button { border: 1px solid var(--line); width: 2.5rem; height: 2.5rem; }
+
+/* ===== Contenido real (integrado desde la web anterior). Estilos neutros, como el resto del esqueleto. ===== */
+input, select, textarea { color-scheme: dark; }
+/* iOS muestra un botón de play sobre el vídeo si bloquea el autoplay (modo bajo consumo): se oculta y queda el póster. */
+video::-webkit-media-controls-start-playback-button { display: none !important; -webkit-appearance: none; }
+video::-webkit-media-controls-overlay-play-button { display: none !important; }
+
+.foot__form input, .foot__form select, .foot__form textarea {
+  width: 100%; background: transparent; border: 0; border-bottom: 1px solid var(--line); color: var(--fg);
+  padding: .5rem 0; font: inherit; font-size: 1rem; border-radius: 0;
+}
+.foot__form input:focus, .foot__form select:focus, .foot__form textarea:focus { outline: none; border-color: var(--accent); }
+.pf__texto { max-width: 60ch; line-height: 1.6; margin-bottom: .75rem; }
+.pf__datos { display: grid; gap: .75rem; margin: 1rem 0; }
+.pf__img { width: 100%; max-width: 32rem; max-height: 34svh; object-fit: cover; margin-top: 1rem; display: block; }
+
+/* 06 reserva */
+.rs__body { --sp-w: 46rem; }
+.rs__body[data-reserving="true"] { --sp-w: min(60rem, 94vw); }
+.rs__body[data-dock="true"][data-reserving="true"] { max-height: 88svh; }
+.rs__calendly-frame { min-width: 280px; height: min(70svh, 780px); margin: 1rem 0; }
+.rs__ok { color: var(--accent); font-family: var(--mono); font-size: .85rem; }
+
+/* extras después del capítulo 06: cierre, empresas, contacto (la FAQ vive entre 04 y 05: ver bloque «FAQ» al final) */
+.foot { position: relative; z-index: 2; background: var(--bg); border-top: 1px solid var(--line); display: grid; grid-template-columns: minmax(0, 1fr); gap: 5rem; padding: 6rem 1.25rem 4rem var(--pad-l); }
+.foot section { display: grid; gap: 1rem; justify-items: start; max-width: 72rem; }
+.foot .btn { margin-top: 0; }
+.foot__row { display: flex; flex-wrap: wrap; gap: .75rem; }
+.foot__contacto { grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 2.5rem; max-width: none; align-items: start; }
+.foot__brand { font-family: var(--display); font-size: 1.4rem; }
+.foot__col { display: grid; gap: .5rem; align-content: start; }
+.foot__col a { text-decoration: underline; text-underline-offset: 3px; color: var(--dim); }
+.foot__form { display: grid; gap: .75rem; width: 100%; max-width: 32rem; }
+.foot__form label { display: grid; gap: .1rem; font-family: var(--mono); font-size: .7rem; letter-spacing: .08em; color: var(--dim); }
+.foot__error { color: #ff8a8a; font-size: .85rem; }
+.foot__bottom { padding-top: 1rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: .01ms !important; }
+  .ent__cue-line { animation: none; opacity: 1; transform: none; }
+
+}
+
+/* =====================================================================================================
+   LEGIBILIDAD TIPOGRÁFICA (solo tipografía: peso, color de titulares, interlineado, sombra, ancho de línea)
+   Sin cambios de escena, composición, posiciones, animaciones ni copy. Va al final para prevalecer.
+   ===================================================================================================== */
+:root { --tx-head-shadow: 0 1px 2px rgba(0, 0, 0, .8), 0 2px 14px rgba(0, 0, 0, .55), 0 0 32px rgba(0, 0, 0, .35); }
+
+/* 1 · TITULARES — mismo tipo, más peso, blanco limpio, sombra multicapa sutil */
+.bridge__a-title, .bridge__b-title, .bridge__cierre-top, .bridge__c-nombre {
+  color: #fff; text-shadow: var(--tx-head-shadow);
+}
+.bridge__a-title, .bridge__b-title, .bridge__cierre-top { font-weight: 900; }
+.bridge__c-nombre { font-weight: 800; letter-spacing: .02em; }@media (max-width: 700px) {
+
+  .bridge__a-title, .bridge__b-title, .bridge__cierre-top { line-height: 1.18; max-width: 17ch; }
+  .bridge__sub { line-height: 1.45; max-width: 28ch; margin-inline: auto; }
+  .bridge__c-nombre { line-height: 1.2; }
+  .bridge__c-texto { line-height: 1.45; max-width: 28ch; }
+  .bridge__d-paso { line-height: 1.45; max-width: 28ch; }
+
+}
+
+/* 2 · TEXTO SECUNDARIO — blanco/gris muy claro ~93 %, peso 600, interlineado 1.4–1.5, sombra oscura suave (sin cajas) */
+:root { --tx-body-color: rgba(244, 246, 250, .93); --tx-body-shadow: 0 1px 2px rgba(0, 0, 0, .85), 0 1px 12px rgba(0, 0, 0, .6); }
+.bridge__sub, .bridge__c-texto, .bridge__d-paso {
+  color: var(--tx-body-color); font-weight: 600; text-shadow: var(--tx-body-shadow); letter-spacing: .005em;
+}
+
+/* 3 · TYSON / McGREGOR — nombre destacado + descripción totalmente legible */
+.bridge__c-nombre { font-size: clamp(1rem, 2.5vw, 1.32rem); }
+.bridge__c-texto {
+  font-size: clamp(.84rem, 2.2vw, .95rem); line-height: 1.45; color: rgba(255, 255, 255, .94);
+  -webkit-text-stroke: .25px rgba(0, 0, 0, .35);
+}
+
+/* 5 · NAVEGACIÓN LATERAL — misma posición y diseño; solo jerarquía */
+.nav button { opacity: .45; text-shadow: 0 1px 2px rgba(0, 0, 0, .8); }
+.nav li[data-on="true"] button { opacity: 1; text-shadow: 0 1px 2px rgba(0, 0, 0, .9), 0 0 10px rgba(0, 0, 0, .6); }
+.nav li[data-on="true"] .nav__l { font-weight: 600; }
+
+/* Otros textos con el mismo problema (Asesoría, Slot, Chen, Reserva, footer) */
+.ph-text { color: rgba(226, 231, 240, .9); text-shadow: var(--tx-body-shadow); line-height: 1.55; }
+.label { color: rgba(226, 231, 240, .82); text-shadow: 0 1px 2px rgba(0, 0, 0, .8); }
+@media (max-width: 700px) { .ph-text { max-width: 34ch; font-size: .88rem; } 
+}
+
+/* CTA fijo (Sesión privada + precio de partida) */
+.scta {
+  /* A la izquierda de .controls (2 botones de 2,5 rem + hueco 0,5 rem = 5,5 rem, anclados a 1 rem): nunca comparten espacio. */
+  position: fixed; z-index: 11; right: calc(max(1rem, env(safe-area-inset-right)) + 5.5rem + .75rem); bottom: max(1rem, env(safe-area-inset-bottom));
+  display: flex; align-items: center; gap: .7rem; pointer-events: auto;
+}
+.scta__btn {
+  font-family: var(--mono); font-size: .74rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: #fff; padding: .7rem 1rem; border: 1px solid var(--accent); background: rgba(5, 6, 8, .55);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .8);
+}@media (max-width: 700px) { .scta__btn { padding: .65rem .9rem; } 
+}
+
+
+/* ===================================================================================================================
+   04 SLOT — PLANES Y PRECIOS (ver el bloque «04 · PLANES Y PRECIOS» al final de esta sección) + PLAN HÍBRIDO — combinación de modalidades reales de SML (1:1 · Parejas · Grupal). Nada de objetivo,
+   disciplina ni nivel; sin precios ni totales. Mismos tipos y tokens que las Escenas 02/03 (Big Shoulders Display ·
+   Inter Tight · JetBrains Mono), acotados a #slot. Materiales: grafito / antracita / blanco técnico / aluminio.
+   Modalidades = materiales: 1:1 aluminio macizo · Parejas acero · Grupal rayado. ROJO SML solo como estado activo
+   o interacción (hueco asignado, paso activo, botón). Sin tarjetas, sin dashboard, sin ruleta, sin estética casino.
+   =================================================================================================================== */
+#slot {
+  --sx-display: var(--font-display);
+  --sx-sans: var(--font-sans);
+  --sx-mono: var(--font-mono);
+  --sx-ink: var(--c-ink); --sx-soft: var(--c-soft); --sx-mute: var(--c-mute);
+  --sx-hair: var(--c-hair);
+  --sx-red: var(--c-red);   /* ⚠ rojo SML: valor provisional, única variable a cambiar */
+  --sx-shadow: var(--c-shadow);
+  --sx-top: clamp(.5rem, 13svh, 7rem);
+  /* materiales de las modalidades (los usan huecos, bloques del esquema y filas) */
+  --m-1-1: linear-gradient(180deg, #eef1f4 0%, #b4bbc5 55%, #8b929d 100%);
+  --m-duo: linear-gradient(180deg, #9aa1ab 0%, #656c76 60%, #454a52 100%);
+  --m-grupo: repeating-linear-gradient(135deg, rgba(239, 235, 227, .5) 0 1px, transparent 1px 7px), rgba(14, 16, 20, .85);
+}
+/* Atmósfera, no caja: fundido de grafito por la izquierda para que el texto se lea sobre el rack 3D del fondo. */
+#slot .stage::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(90deg, rgba(5, 6, 8, .82) 0, rgba(5, 6, 8, .6) 48%, rgba(5, 6, 8, .18) 100%);
+}
+.sx { position: relative; z-index: 1; height: 100%; }
+.sx__bay:not([data-m="empty"]) .sx__led { opacity: 1; }
+@keyframes sxSeat { from { transform: scaleY(.9); filter: brightness(1.6); } to { transform: none; filter: none; } }
+.sx__set, .sx__cta {
+  font-family: var(--sx-mono); font-size: .74rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--sx-ink);
+  border: 1px solid var(--sx-red); padding: .8rem 1.2rem; min-height: 2.75rem; background: rgba(5, 6, 8, .5); transition: background-color .2s, color .2s;
+}
+.sx__set:hover:not(:disabled), .sx__cta:hover { background: var(--sx-red); color: #fff; }
+.sx__cta { margin-top: .4rem; padding: .9rem 1.5rem; }
+#slot button:focus-visible { outline: 2px solid var(--sx-red); outline-offset: 3px; }@media (max-width: 900px) {
+  .sx__flow li:not([data-state="on"]) { display: none; }
+
+}@media (max-width: 700px) {
+  #slot { --sx-top: clamp(.5rem, 9svh, 3rem); }
+
+}
+
+/* ===================================================================================================================
+   04 · PLANES Y PRECIOS — la información comercial gana a la espectacularidad: velo sobre el 3D en planes y formatos,
+   tres columnas comparables (desktop) o carrusel controlado (móvil), precio y frecuencia siempre visibles. Sin
+   tarjetas de gimnasio: hairlines, tipografía técnica y rojo SML solo como acento.
+   =================================================================================================================== */
+#slot { --sx-top: clamp(.4rem, 8svh, 4.5rem); }
+#slot .stage::before { display: none; }
+.sx__pK { margin: .5rem 0 0; font-family: var(--sx-mono); font-weight: 500; font-size: .6875rem; letter-spacing: .14em; text-transform: uppercase; color: var(--sx-mute); }@media (max-width: 900px) {
+  #slot { --sx-top: clamp(.4rem, 6svh, 2.5rem); }
+
+}@media (min-width: 901px) and (max-height: 860px) {
+  #slot { --sx-top: .25rem; }
+  .sx__pK { margin-top: .35rem; }
+
+}@media (max-width: 900px) and (max-height: 700px) {
+  #slot { --sx-top: .2rem; }
+  .sx__pK { margin-top: .3rem; }
+
+}
+.sx__fmt:not(:has(.sx__fTag))::before { content: ""; display: block; height: .95rem; }@media (max-width: 900px) {
+  .sx__fmt:not(:has(.sx__fTag))::before { display: none; }
+
+}
+
+/* Reserva: dos caminos que se explican solos + qué ocurre después. */
+.rs__path { display: grid; gap: .45rem; align-content: start; }
+.rs__pathT { font-size: clamp(1rem, 2.4vw, 1.6rem); font-weight: 600; }
+.rs__pathA { font-family: var(--mono); font-size: .74rem; font-weight: 400; letter-spacing: .04em; line-height: 1.45; color: var(--dim); }
+.rs__path:hover .rs__pathA { color: var(--fg); }
+.rs__after { margin-top: 1.25rem; max-width: 62ch; }
+.rs__after ol { display: grid; gap: .3rem; margin-top: .5rem; counter-reset: rs; }
+.rs__after li { position: relative; padding-left: 1.6rem; font-family: var(--mono); font-size: .78rem; line-height: 1.5; color: rgba(226, 231, 240, .9); counter-increment: rs; }
+.rs__after li::before { content: counter(rs, decimal-leading-zero); position: absolute; left: 0; color: var(--accent); }@media (min-width: 901px) and (max-height: 860px) { /* el indicador de flujo mide ≈ 3 rem */
+
+}@media (max-width: 900px) {
+  .sx__pK { margin-top: .15rem; font-size: .6875rem; }
+  #slot { --sx-top: 0px; }
+
+  /* Reserva: caminos + pasos compactos */
+  .rs__paths { gap: .6rem; }
+  .rs__path { padding: 1rem .9rem; gap: .3rem; }
+  .rs__pathA { font-size: .6875rem; line-height: 1.35; }
+  .rs__after { margin-top: .8rem; }
+  .rs__after li { font-size: .6875rem; line-height: 1.4; }
+
+}
+@keyframes sxBranch { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.gf__intro { display: grid; gap: .4rem; justify-items: start; max-width: 40rem; flex-shrink: 0; }
+.gf { display: grid; gap: .8rem; width: 100%; max-width: 78rem; flex-shrink: 0; }
+.gf__top { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.gf__link { font-family: var(--sx-mono); font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; color: var(--sx-soft); padding: .5rem 0; min-height: 2.5rem; border-bottom: 1px solid transparent; text-align: left; }
+.gf__link:hover { color: var(--sx-ink); border-bottom-color: var(--sx-red); }
+.gf__grid { display: grid; grid-template-columns: minmax(0, 26rem) minmax(0, 1fr); gap: 1rem clamp(1rem, 3vw, 3rem); align-items: start; }
+.gf__mapWrap { display: grid; gap: .4rem; }
+.gf__k { margin: 0; }
+.gf__map { width: 100%; height: auto; max-height: 52svh; display: block; }
+.gf__zone { cursor: pointer; outline: none; }
+.gf__zone path { fill: rgba(8, 10, 13, .55); stroke: var(--sx-hair); stroke-width: .35; transition: fill .2s, stroke .2s; }
+.gf__zone:hover path, .gf__zone:focus-visible path { stroke: var(--sx-ink); }
+.gf__zone[data-demand="1"] path { fill: rgba(229, 32, 43, .14); }
+.gf__zone[data-demand="2"] path { fill: rgba(229, 32, 43, .26); }
+.gf__zone[data-demand="3"] path { fill: rgba(229, 32, 43, .4); }
+.gf__zone[data-demand="4"] path { fill: rgba(229, 32, 43, .58); }
+.gf__zone[data-on="true"] path { stroke: var(--sx-red); stroke-width: .8; }
+.gf__zn, .gf__zc { text-anchor: middle; dominant-baseline: middle; pointer-events: none; text-shadow: none; }
+.gf__zn { font-family: var(--sx-mono); font-size: 2.6px; letter-spacing: .04em; text-transform: uppercase; fill: var(--sx-soft); }
+.gf__zone[data-on="true"] .gf__zn { fill: var(--sx-ink); }
+.gf__zc { font-family: var(--sx-display); font-weight: 900; font-size: 4px; fill: var(--sx-ink); }
+.gf__panel { display: grid; gap: .8rem; align-content: start; min-width: 0; }
+.gf__hint, .gf__nota { margin: 0; font-family: var(--sx-sans); font-size: clamp(.8rem, 1vw, .92rem); line-height: 1.4; color: var(--sx-soft); text-wrap: pretty; }
+.gf__hint { font-family: var(--sx-mono); font-size: .74rem; letter-spacing: .12em; text-transform: uppercase; color: var(--sx-mute); }
+.gf__zt { margin: 0; font-family: var(--sx-display); font-weight: 900; text-transform: uppercase; font-size: clamp(2rem, 4vw, 3.4rem); line-height: .9; color: var(--sx-ink); }
+.gf__ok { margin: 0; padding-left: .9rem; border-left: 2px solid var(--sx-red); font-family: var(--sx-sans); font-size: .9rem; line-height: 1.4; color: var(--sx-ink); }
+.gf__err { margin: 0; font-family: var(--sx-sans); font-size: .85rem; color: #ff8a90; }
+.gf__list { display: grid; }
+.gf__row { border-top: 1px solid var(--sx-hair); padding: .6rem 0; display: grid; gap: .6rem; }
+.gf__row:last-child { border-bottom: 1px solid var(--sx-hair); }
+.gf__rowMain { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: .6rem 1.2rem; align-items: center; }
+.gf__slot, .gf__count { display: grid; gap: .1rem; }
+.gf__slot b { font-family: var(--sx-display); font-weight: 900; font-size: clamp(1.3rem, 2.2vw, 1.8rem); letter-spacing: .03em; line-height: 1; color: var(--sx-ink); }
+.gf__slot small, .gf__count small { font-family: var(--sx-mono); font-size: .6875rem; letter-spacing: .1em; text-transform: uppercase; color: var(--sx-mute); max-width: 26ch; }
+.gf__count { justify-items: start; }
+.gf__count b { font-family: var(--sx-display); font-weight: 900; font-size: 1.5rem; line-height: 1; color: var(--sx-ink); }
+.gf__row[data-estado="confirmado"] .gf__count small { color: var(--sx-ink); }
+.gf__pips { display: flex; gap: .3rem; }
+.gf__pips i { width: .6rem; height: .6rem; border-radius: 50%; border: 1px solid var(--sx-hair); }
+.gf__pips i[data-on="true"] { background: var(--sx-red); border-color: var(--sx-red); }
+.gf__join { margin: 0; padding: .6rem .9rem; font-size: .6875rem; }
+.gf__alt { display: grid; gap: .4rem; justify-items: start; padding-top: .4rem; }
+.gf__altT { margin: 0; font-family: var(--sx-display); font-weight: 800; text-transform: uppercase; font-size: 1.3rem; color: var(--sx-ink); }
+.gf__form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem .9rem; padding: .4rem 0 .2rem; }
+.gf__f { display: grid; gap: .25rem; min-width: 0; }
+.gf__f > span, .gf__check span { font-family: var(--sx-mono); font-size: .6875rem; letter-spacing: .14em; text-transform: uppercase; color: var(--sx-mute); }
+.gf__f input, .gf__f select { min-height: 2.6rem; padding: 0 .7rem; background: rgba(5, 6, 8, .6); border: 1px solid var(--sx-hair); color: var(--sx-ink); font-family: var(--sx-sans); font-size: 1rem; border-radius: 0; }
+.gf__f input:focus, .gf__f select:focus { outline: 2px solid var(--sx-red); outline-offset: 2px; }
+.gf__chips { display: flex; gap: .3rem; flex-wrap: wrap; }
+.gf__chips button { width: 2.6rem; height: 2.6rem; border: 1px solid var(--sx-hair); font-family: var(--sx-mono); font-size: .8rem; color: var(--sx-soft); }
+.gf__chips button[aria-pressed="true"] { border-color: var(--sx-red); background: var(--sx-red); color: #fff; }
+.gf__hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.gf__check { grid-column: 1 / -1; display: flex; gap: .6rem; align-items: flex-start; text-transform: none; }
+.gf__check input { margin-top: .2rem; accent-color: var(--sx-red); }
+.gf__form > .gf__nota, .gf__form > .gf__err, .gf__btns { grid-column: 1 / -1; }
+.gf__btns { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+.gf__btns .sx__cta { margin: 0; }
+@media (max-width: 760px) {
+  .gf__grid { grid-template-columns: 1fr; }
+  .gf__map { max-height: 40svh; }
+  .gf__rowMain { grid-template-columns: 1fr auto; }
+  .gf__join { grid-column: 1 / -1; }
+  .gf__form { grid-template-columns: 1fr; }
+
+}
+@media (prefers-reduced-motion: reduce) { .gf__zone path { transition: none; } 
+}
+.gf__intro { max-width: 52rem; }
+.scta { flex-wrap: wrap; justify-content: flex-end; max-width: calc(100vw - 8rem); }
+
+
+ 
+
+
+/* =====================================================================================================
+   UMBRAL PREVIO — «¿Qué vienes a buscar?» (Experience/Umbral). Capa propia sobre el mundo 3D; por debajo del B2B (z 20)
+   y por encima de HUD/índice/CTA fijo (z 10-11). Reutiliza la tipografía de la Entrada y el rojo del B2B.
+   ===================================================================================================== */
+.umbral {
+  --u-display: var(--font-serif);
+  --u-title: var(--font-display);
+  --u-sans: var(--font-sans);
+  --u-mono: var(--font-mono);
+  --u-red: var(--c-red);
+  position: fixed; inset: 0; z-index: 15; display: grid; place-items: center; overflow: hidden;
+  padding: max(1.25rem, env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right)) max(1.25rem, env(safe-area-inset-bottom)) max(1.25rem, env(safe-area-inset-left));
+  color: #efebe3; outline: none; touch-action: none; overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  opacity: 1; visibility: visible; transition: opacity .45s ease, visibility 0s;
+}
+/* Mientras el B2B está abierto el umbral queda debajo, sin verse a través del fondo translúcido del B2B. */
+.umbral[data-hidden] { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .45s ease, visibility 0s .45s; }
+.umbral[data-choice] { pointer-events: none; }
+.umbral__path:focus:not(:focus-visible) { outline: none; }
+@keyframes umbralIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }@media (max-width: 700px) {
+  .umbral { place-items: end center; padding-bottom: max(1.5rem, env(safe-area-inset-bottom)); }
+
+}@media (prefers-reduced-motion: reduce) {
+  .umbral, .umbral__path, .umbral__path::before, .umbral__arrow { transition-duration: .01ms !important; }
+
+}@media (max-width: 900px) {
+  /* Formatos (sin rama abierta): la columna del nombre nunca baja de su palabra más larga (GRUPO / REDUCIDO) y el texto
+     auxiliar se reparte el resto; antes la columna «auto» del texto le quitaba todo el ancho al nombre. */
+  .sx__roots:not([data-open="true"]) .sx__root { grid-template-columns: minmax(min-content, 1fr) minmax(0, 1.25fr); padding-top: .65rem; padding-bottom: .65rem; }
+  .sx__roots:not([data-open="true"]) .sx__rootN { font-size: min(2.2rem, 9.5vw); }
+  .sx__roots:not([data-open="true"]) .sx__rootS { min-width: 0; overflow-wrap: anywhere; }
+  /* Segunda ruta (NO SÉ QUÉ ME CONVIENE): separada y reconocible como alternativa a las tres tarjetas. */
+  .sx__start:not([data-compact="true"]) { margin-top: .2rem; gap: .3rem; }
+
+}
+/* Móviles muy estrechos (≤360 px): el texto auxiliar de cada formato pasa bajo el nombre para que este conserve todo el ancho. */
+@media (max-width: 360px) {
+  .sx__roots:not([data-open="true"]) .sx__root { grid-template-columns: minmax(0, 1fr); gap: .3rem; }
+  .sx__roots:not([data-open="true"]) .sx__rootS { text-align: left; }
+
+}
+
+
+/* =====================================================================================================
+   FASE TIPOGRAFÍA + NAVEGACIÓN RESPONSIVE (corrección quirúrgica; va al final para prevalecer).
+   Sin cambios de escenas, 3D, bridge, copy, precios ni composición. Solo: familias por función, tamaños mínimos
+   en móvil, áreas táctiles ≥44 px, navegación lateral discreta, CTA fijo con safe areas y tarjetas de Scene 04.
+   ===================================================================================================== */
+
+/* 1 · Familias por función: --display/--sans/--mono (antes Unbounded + pilas del sistema) pasan a las pilas de rol. */
+:root { --display: var(--font-display); --sans: var(--font-sans); --mono: var(--font-mono); }
+.h2 { font-family: var(--font-display); font-weight: 800; text-transform: uppercase; line-height: 1; letter-spacing: .01em; font-size: clamp(2rem, 1.4rem + 2.6vw, 3.25rem); text-wrap: balance; }
+.foot__brand { font-family: var(--font-display); font-weight: 800; text-transform: uppercase; font-size: 1.75rem; letter-spacing: .02em; }
+/* Texto de lectura (explicaciones, FAQ, reserva): Inter Tight, no mono. */
+.ph-text { font-family: var(--font-sans); font-size: 1rem; line-height: 1.55; max-width: 62ch; }
+.rs__pathA { font-family: var(--font-sans); font-size: .9375rem; letter-spacing: 0; line-height: 1.45; color: rgba(226, 231, 240, .88); }
+.rs__after li { font-family: var(--font-sans); font-size: 1rem; line-height: 1.5; }
+.rs__path { min-height: 2.75rem; }
+.rs__pathT { font-family: var(--font-display); font-weight: 800; text-transform: uppercase; font-size: clamp(1.4rem, 1rem + 1.6vw, 2rem); line-height: 1.05; letter-spacing: .02em; }
+.label { font-size: .75rem; letter-spacing: .12em; }
+.foot__form label { font-size: .75rem; letter-spacing: .08em; }
+.foot__error { font-family: var(--font-sans); font-size: .9375rem; }
+
+/* Botones y enlaces: legibles y con área táctil ≥44 px (sin cambiar su aspecto). */
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem; font-family: var(--font-sans); font-weight: 600; font-size: .9375rem; letter-spacing: .04em; line-height: 1.2; }
+.link { display: inline-flex; align-items: center; min-height: 2.75rem; font-family: var(--font-sans); font-size: 1rem; }
+.foot__col a { display: inline-flex; align-items: center; min-height: 2.75rem; font-family: var(--font-sans); font-size: 1rem; }
+.foot__bottom { font-size: .75rem; }
+
+/* Foco visible en todo lo interactivo. */
+a:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* 2 · HUD: etiqueta activa en una línea, sin invadir el contenido; safe area superior. */
+.hud { padding-top: max(1rem, env(safe-area-inset-top)); padding-left: max(1.25rem, env(safe-area-inset-left)); padding-right: max(1.25rem, env(safe-area-inset-right)); font-size: .75rem; letter-spacing: .12em; }
+.hud__where { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 1px 2px rgba(0, 0, 0, .9); }
+.hud__brand { text-shadow: 0 1px 2px rgba(0, 0, 0, .9); }
+.nav button { min-height: 2.75rem; min-width: 2.75rem; font-family: var(--font-mono); font-size: .8125rem; }
+.nav__l { font-size: .75rem; letter-spacing: .08em; }
+
+/* 4 · ↑ / ↓: mismo aspecto (2,5 rem), zona táctil real ≥44 px con área ampliada invisible; safe areas. */
+.controls { right: max(1rem, env(safe-area-inset-right)); bottom: max(1rem, env(safe-area-inset-bottom)); }
+.controls button { position: relative; font-size: 1.125rem; line-height: 1; background: rgba(5, 6, 8, .55); }
+.controls button::after { content: ""; position: absolute; inset: -.25rem; }
+
+/* 5 · CTA fijo: jerarquía de acción (Inter Tight), legible, safe areas; se retira al llegar al footer. */
+.scta__btn { font-family: var(--font-sans); font-weight: 600; font-size: .9375rem; letter-spacing: .06em; min-height: 2.75rem; line-height: 1.15; background: rgba(5, 6, 8, .85); }
+:root[data-over-foot="true"] .scta, :root[data-over-foot="true"] .controls { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .25s, visibility 0s .25s; }
+.scta, .controls { transition: opacity .25s, visibility 0s; }@media (max-width: 900px) {
+  /* Navegación: carril discreto de números; el nombre del capítulo activo vive en el HUD, no en una etiqueta que crece. */
+  .nav { left: max(.35rem, env(safe-area-inset-left)); padding: .4rem 0; background: rgba(5, 6, 8, .5); border: 1px solid var(--line); }
+  .nav ul { gap: 0; }
+  .nav li { padding-left: 0; }
+  .nav button { justify-content: center; width: 2.75rem; gap: 0; }
+  .nav__l, .nav button:hover .nav__l, .nav button:focus-visible .nav__l, .nav li[data-on="true"] .nav__l { display: none; max-width: 0; }
+  .nav li::before { left: 0; }
+  .nav li[data-on="true"] button { background: rgba(143, 179, 255, .14); } /* ya existe «Empresas · Hoteles · Eventos» en el CTA fijo: sin navegación duplicada */
+
+  /* Contenido: la columna izquierda reservada (--pad-l) deja pasar el carril de 2,75 rem + margen. */
+  :root { --pad-l: 3.75rem; }
+
+  /* CTA + controles: columna a la izquierda de ↑/↓; nunca encima de ellos. */
+  .scta { flex-direction: column; align-items: stretch; gap: .15rem; max-width: calc(100vw - 8.25rem - env(safe-area-inset-right, 0px)); }
+  .scta__btn { padding: .6rem .8rem; text-align: center; }
+  .rs__body { padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px)); }
+  .foot { padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px)); padding-right: max(1.25rem, env(safe-area-inset-right)); }
+  .sx__gDet, .sx__pend, .sx__ayuda, .sx__bTitle, .sx__startQ, .sx__ovPrecios span, .sx__pK, .sx__kick { font-size: .75rem; letter-spacing: .1em; }
+  .sx__cta, .sx__set { min-height: 2.75rem; }
+  .gf__chips button { width: 2.75rem; height: 2.75rem; }
+  .gf__join { min-height: 2.75rem; font-size: .75rem; }
+  .gf__f > span, .gf__check span, .gf__slot small, .gf__count small { font-size: .75rem; }
+  .gf__f input, .gf__f select { min-height: 2.75rem; }
+
+}@media (max-width: 380px) {
+  .scta { max-width: calc(100vw - 8rem - env(safe-area-inset-right, 0px)); }
+  .scta__btn { font-size: .875rem; letter-spacing: .04em; padding: .6rem .6rem; }
+
+}
+
+
+@media (max-width: 860px) {
+  
+  /* Índice 01–08: ocho áreas iguales que caben en el ancho (sin scroll horizontal); el nombre del paso se lee en la cabecera de cada sección. */
+  
+  
+  
+  
+  
+  
+  
+
+}
+
+
+/* =====================================================================================================
+   REESTRUCTURA v14 · navegación de siete entradas, hero con dos caminos, sin numeraciones, Formatos ≠ Planes,
+   Empresas en cinco bloques, Sobre Chen, footer simplificado. Todo lo anterior se mantiene; esto solo lo sustituye.
+   ===================================================================================================== */
+
+/* NAVEGACIÓN: DISCIPLINAS · MÉTODO · ENTRENAMIENTO · SOBRE CHEN · EMPRESAS  |  RESERVAR (separada; rótulos siempre visibles) */
+nav.nav { position: fixed; left: max(.75rem, env(safe-area-inset-left)); top: 50%; transform: translateY(-50%); z-index: 12; padding: 0; background: none; border: 0; }
+nav.nav .nav__toggle { display: none; }
+nav.nav .nav__list { display: grid; gap: .1rem; margin: 0; padding: 0; list-style: none; }
+nav.nav li { position: relative; padding-left: .7rem; }
+nav.nav li::before { content: ''; position: absolute; left: 0; top: 50%; width: 1px; height: 0; background: var(--accent); transform: translateY(-50%); transition: height .35s ease; }
+nav.nav li[data-on="true"]::before { height: 1.4rem; }
+nav.nav .nav__list button {
+  display: flex; align-items: center; justify-content: flex-start; width: auto; min-height: 2.75rem; padding: 0 .25rem; gap: 0;
+  font-family: var(--font-mono); font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; white-space: nowrap;
+  color: var(--dim); opacity: .6; text-shadow: 0 1px 2px rgba(0, 0, 0, .9);
+}
+nav.nav li[data-on="true"] button { color: var(--fg); opacity: 1; text-decoration: underline; text-underline-offset: .35em; text-decoration-thickness: 1px; background: none; }
+nav.nav li[data-id="book"] button { color: var(--accent); opacity: 1; font-weight: 600; }
+/* RESERVAR = acción principal: separada de las cinco entradas editoriales por una regla fina y con más peso/contraste que ellas (sin caja ni icono). */
+nav.nav li[data-id="book"] { margin-top: .9rem; padding-top: .35rem; border-top: 1px solid var(--cx-line-hi); }
+@media (hover: hover) and (pointer: fine) { nav.nav .nav__list button:hover { opacity: 1; color: var(--fg); } 
+}
+@media (max-width: 900px) {
+  /* Móvil: «Menú» desplegable bajo el HUD; nada fijo tapa el contenido hasta que se abre. */
+  nav.nav { top: calc(max(1rem, env(safe-area-inset-top)) + 2.1rem); left: max(.4rem, env(safe-area-inset-left)); transform: none; }
+  nav.nav .nav__toggle {
+    display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem; min-width: 3.25rem; padding: 0 .6rem;
+    font-family: var(--font-mono); font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--fg);
+    background: rgba(5, 6, 8, .7); border: 1px solid var(--line);
+  }
+  nav.nav .nav__list { display: none; margin-top: .25rem; padding: .35rem .25rem; background: rgba(5, 6, 8, .94); border: 1px solid var(--line); min-width: 12.5rem; }
+  nav.nav[data-open="true"] .nav__list { display: grid; }
+  nav.nav li { padding-left: .6rem; }
+  /* Móvil: cinco entradas del mapa + RESERVAR separada por la misma regla fina, con aire suficiente para leerse como acción aparte. */
+  nav.nav li[data-id="book"] { margin-top: .5rem; padding-top: .3rem; }
+  nav.nav .nav__list button { font-size: .8125rem; width: 100%; }
+  :root[data-nav-open="true"] .scta, :root[data-nav-open="true"] .controls { opacity: 0; visibility: hidden; pointer-events: none; } /* menú abierto: el menú es el protagonista */
+
+}
+
+/* HERO: dos caminos con el mismo peso + Empresas como ruta secundaria */
+.ent__actions { width: min(90vw, 34rem); gap: .4rem; }
+.ent__b2bLink {
+  min-height: 2.75rem; padding: 0 .5rem; font-family: var(--ent-sans); font-size: .75rem; letter-spacing: .04em; color: var(--dim);
+  text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: .3em;
+}
+.ent__b2bLink:hover { color: var(--fg); }
+.ent__caption { bottom: calc(clamp(5.5rem, 13vh, 8rem) + 10.6rem); }@media (max-width: 700px) {
+  .ent__caption { bottom: calc(clamp(4.75rem, 11vh, 6.5rem) + 10.6rem); }
+
+}@media (max-width: 359px) { .ent__caption { bottom: calc(clamp(4.75rem, 11vh, 6.5rem) + 15.4rem); } 
+}
+
+/* CTA FIJO: solo «SESIÓN PRIVADA · 30 €». Sin enlaces extra ni precios que compitan; no invade ↑/↓ ni el contenido. */
+.scta { flex-wrap: nowrap; max-width: calc(100vw - 8.25rem - env(safe-area-inset-right, 0px)); }
+.scta__btn { white-space: nowrap; text-transform: uppercase; }
+@media (max-width: 380px) { .scta__btn { font-size: .8125rem; letter-spacing: .03em; padding: .6rem .5rem; } 
+}
+
+/* Reserva */
+.rs__after summary { cursor: pointer; }
+.rs__after li::before { content: '—'; }
+
+/* Sobre Chen */
+.pf__resenas { display: grid; gap: .75rem; margin: .6rem 0 0; padding: 0; list-style: none; max-width: 52ch; }
+.pf__resenas li { padding-left: .9rem; border-left: 2px solid var(--accent); font-family: var(--font-sans); font-size: 1rem; line-height: 1.5; color: rgba(226, 231, 240, .92); }
+.pf__img { max-height: 46svh; width: auto; max-width: 100%; object-fit: cover; }
+
+/* Footer: enlaces y formulario plegado */
+.foot__link { justify-self: start; min-height: 2.75rem; font-family: var(--font-sans); font-size: 1rem; color: var(--dim); text-decoration: underline; text-underline-offset: 3px; text-align: left; }
+.foot__link:hover { color: var(--fg); }
+.foot__formWrap > summary { cursor: pointer; min-height: 2.75rem; display: flex; align-items: center; }
+.foot__formWrap[open] > summary { margin-bottom: .5rem; }
+
+
+/* ENTRENAMIENTO · material real (solo se pinta si hay archivos en las carpetas Assets de entrenamiento): proporción fija, recorte con object-fit, sin barras */
+.sx__practica { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; margin-top: .9rem; max-width: 34rem; }
+.sx__practica[data-n="1"] { grid-template-columns: minmax(0, 17rem); }
+.sx__practica figure { margin: 0; }
+.sx__practicaEl { display: block; width: 100%; aspect-ratio: 4 / 5; max-height: 42svh; object-fit: cover; background: #000; }
+.sx__practica figcaption { margin-top: .3rem; font-family: var(--font-mono); font-size: .6875rem; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+@media (max-width: 900px) { .sx__practicaEl { max-height: 34svh; } 
+}
+.sx__spin:hover:not(:disabled) { background: #f23a45; }
+.sx__spin:active:not(:disabled) { transform: translateY(2px); }
+.sx__minis button:hover:not(:disabled) { color: var(--sx-ink); }
+
+/* =====================================================================================================
+   FAQ — módulo técnico entre 04 Entrenamiento y 05 Sobre Chen. No es una escena: DOM opaco, sin cámara ni scroll-scrub.
+   Mismo lenguaje que el resto (grafito, hairlines, acento azul grisáceo, Big Shoulders · Inter Tight · JetBrains Mono),
+   pero más simple: una lista de filas numeradas que se despliegan. Sin tarjetas.
+   ===================================================================================================== */
+/* El umbral 04→05 arranca tras la FAQ (ver Threshold.jsx `start`): tramo completo de velo + viaje de cámara. */
+.threshold[data-threshold="slot>proof-chen"] { height: 100vh; }
+
+.faq { --faq-grid: rgba(143, 179, 255, .05); position: relative; z-index: 2; isolation: isolate; pointer-events: auto; background: var(--bg); border-top: 1px solid var(--line);
+  padding: clamp(4.5rem, 12vh, 7rem) max(1.25rem, env(safe-area-inset-right)) clamp(4.5rem, 10vh, 6.5rem) var(--pad-l); }
+/* Remate superior: funde el borde con el final del escenario 04 sin añadir altura. */
+.faq::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 5rem; pointer-events: none; background: linear-gradient(to top, var(--bg), rgba(5, 6, 8, 0)); }
+/* Cuadrícula de laboratorio muy tenue que se desvanece hacia abajo. */
+.faq::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background-image: linear-gradient(var(--faq-grid) 1px, transparent 1px), linear-gradient(90deg, var(--faq-grid) 1px, transparent 1px); background-size: 4rem 4rem;
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 25% 0%, #000 0, transparent 75%); mask-image: radial-gradient(ellipse 80% 70% at 25% 0%, #000 0, transparent 75%); }
+.faq__inner { max-width: 54rem; display: grid; gap: 1.25rem; }
+.faq__head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding-bottom: .8rem; border-bottom: 1px solid var(--line); }
+.faq__title { margin: 0 0 .75rem; color: #fff; font-weight: 900; text-shadow: var(--tx-head-shadow); }
+
+.faq__list { position: relative; border-top: 1px solid var(--line); }
+.faq__list::before, .faq__list::after { content: ""; position: absolute; width: .8rem; height: .8rem; border: 1px solid var(--accent); opacity: .75; pointer-events: none; }
+.faq__list::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.faq__list::after { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+
+.faq__item { position: relative; border-bottom: 1px solid var(--line); transition: background .3s ease; }
+.faq__item::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--accent); transform: scaleY(0); transition: transform .35s ease; }
+.faq__item[data-open="true"] { background: linear-gradient(90deg, rgba(143, 179, 255, .08), rgba(143, 179, 255, 0) 75%); }
+.faq__item[data-open="true"]::before { transform: scaleY(1); }
+@media (hover: hover) and (pointer: fine) {
+  .faq__item:hover::before { transform: scaleY(.5); }
+  .faq__item[data-open="true"]:hover::before { transform: scaleY(1); }
+  .faq__q:hover .faq__t { color: #fff; }
+
+}
+.faq__h { margin: 0; font: inherit; }
+.faq__q { display: grid; grid-template-columns: 2.25rem minmax(0, 1fr) 1rem; align-items: center; gap: .9rem; width: 100%; min-height: 3.5rem; padding: .6rem .6rem .6rem .9rem; text-align: left;
+  font-family: var(--font-sans); font-weight: 500; font-size: 1.0625rem; line-height: 1.35; color: var(--c-ink); }
+.faq__t { transition: color .25s ease; text-wrap: pretty; }
+.faq__n { font-family: var(--font-mono); font-size: .75rem; letter-spacing: .12em; color: var(--dim); transition: color .25s ease; }
+.faq__item[data-open="true"] .faq__n { color: var(--accent); }
+/* «+» dibujado con dos trazos: el vertical gira y desaparece al abrir («−»). */
+.faq__plus { position: relative; width: 1rem; height: 1rem; justify-self: end; color: var(--accent); }
+.faq__plus::before, .faq__plus::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: currentColor; transition: transform .3s ease; }
+.faq__plus::after { transform: rotate(90deg); }
+.faq__item[data-open="true"] .faq__plus::after { transform: rotate(0deg); }
+
+/* Respuesta: se despliega sin saltos de altura (grid 0fr → 1fr). Cerrada, queda fuera del árbol de accesibilidad. */
+.faq__a { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows .35s ease, visibility 0s .35s; }
+.faq__item[data-open="true"] .faq__a { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows .35s ease, visibility 0s; }
+.faq__a > div { min-height: 0; overflow: hidden; }
+.faq__p { max-width: 62ch; padding: .1rem 1.25rem 1.4rem calc(.9rem + 2.25rem + .9rem); font-family: var(--font-sans); font-size: 1rem; line-height: 1.6; color: rgba(226, 231, 240, .88); }
+
+@media (max-width: 900px) {
+  .faq { padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px)); }
+
+}
+@media (max-width: 700px) {
+  .faq__head .label { white-space: nowrap; font-size: .6875rem; letter-spacing: .06em; }
+  .faq__q { grid-template-columns: 1.75rem minmax(0, 1fr) 1rem; gap: .7rem; padding-left: .8rem; font-size: 1rem; }
+  .faq__p { padding-left: calc(.8rem + 1.75rem + .7rem); padding-right: .6rem; }
+
+}
+@media (prefers-reduced-motion: reduce) {
+  .faq__item, .faq__item::before, .faq__a, .faq__plus::before, .faq__plus::after, .faq__t, .faq__n { transition: none !important; }
+
+}
+
+/* =====================================================================================================
+   BRIDGE · LEGIBILIDAD EN MÓVIL (≤700 px). Solo tamaño, contraste y posición del texto; el copy, los tiempos del
+   scrub, las animaciones y la escena 3D no cambian. Va al final para prevalecer sobre las reglas de tipografía de arriba.
+   Problemas vistos en una grabación en iPhone: texto muy pequeño sobre un fondo 3D claro y subtítulos de Tyson /
+   McGregor tapados por el botón fijo «Sesión privada».
+   ===================================================================================================== */
+@media (max-width: 700px) {
+  /* Velo suave detrás de cada bloque de texto (no es una caja: gradiente radial que se funde con la escena). */
+  .bridge__momento { isolation: isolate; }
+  .bridge__momento::before {
+    content: ""; position: absolute; z-index: -1; inset: -2.4rem -1.4rem; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 50%, rgba(3, 5, 8, .74) 0, rgba(3, 5, 8, .52) 48%, rgba(3, 5, 8, 0) 78%);
+  }
+  .bridge__a-title, .bridge__b-title { font-size: 1.75rem; line-height: 1.12; max-width: 18ch; }
+  .bridge__sub { font-size: 1.05rem; line-height: 1.45; color: rgba(244, 246, 250, .96); }
+
+  /* Tyson → McGregor: los dos subtítulos ocupan el MISMO hueco (nunca se ven a la vez), anclado por encima del CTA fijo. */
+  /* .bridge__caption mide 0 de alto y está centrada en pantalla: su borde inferior es el centro → -50svh lo lleva al fondo. */
+  .bridge__c { top: auto; bottom: calc(6.75rem - 50vh); bottom: calc(6.75rem - 50svh + env(safe-area-inset-bottom, 0px)); transform: none; }
+  .bridge__c-arena { display: grid; justify-items: center; gap: 0; }
+  .bridge__c-slot[data-i="0"], .bridge__c-slot[data-i="1"] { grid-area: 1 / 1; width: 100%; align-self: end; padding-top: 0; }
+  .bridge__c-figure, .bridge__c-divider { display: none; }
+  .bridge__c-nombre { font-size: 1.35rem; line-height: 1.15; }
+  .bridge__c-texto { font-size: 1.05rem; line-height: 1.4; max-width: 24ch; color: #fff; }
+
+  /* El mapa: más grande y sin atenuar las capas profundas. */
+  .bridge__d-paso { font-size: 1.25rem; line-height: 1.25; max-width: 22ch; }
+  .bridge__d-funnel { gap: .7rem; }
+  .bridge__d-layer[data-i="1"] { transform: translateZ(-12px) scale(.985); opacity: 1; }
+  .bridge__d-layer[data-i="2"] { transform: translateZ(-24px) scale(.97); opacity: 1; }
+  .bridge__d-layer[data-i="3"] { transform: translateZ(-36px) scale(.955); opacity: 1; }
+  .bridge__d-layer[data-i="4"] { transform: translateZ(-48px) scale(.94); opacity: 1; }
+  .bridge__arrow { opacity: .75; }
+
+}
+
+/* ---- Privacidad: enlaces, consentimiento y páginas legales ---- */
+.foot__consent { display: flex; align-items: flex-start; gap: .6rem; font-family: var(--font-sans); font-size: .875rem; line-height: 1.4; color: var(--dim); }
+.foot__consent input { margin-top: .2rem; width: 1.1rem; height: 1.1rem; flex: none; accent-color: var(--c-red); }
+.foot__consent a, .foot__legal a, .gf__nota a, .gf__check a, .rs__legal a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.foot__consent a:hover, .foot__legal a:hover, .gf__nota a:hover, .gf__check a:hover, .rs__legal a:hover { color: var(--fg); }
+
+.gf__check a { text-transform: none; letter-spacing: 0; }
+
+.legal { max-width: 46rem; margin: 0 auto; padding: clamp(1.5rem, 5vw, 4rem) clamp(1.25rem, 5vw, 2rem) 5rem; font-family: var(--font-sans); color: var(--fg); line-height: 1.6; }
+.legal__back { display: inline-block; margin-bottom: 2rem; color: var(--dim); text-decoration: underline; text-underline-offset: 3px; }
+.legal__h1 { font-family: var(--font-display); font-size: var(--fs-heading); line-height: var(--lh-heading); margin: 0 0 1rem; }
+.legal__h2 { font-family: var(--font-display); font-size: 1.4rem; margin: 2rem 0 .6rem; }
+.legal__aviso { padding: .8rem 1rem; border: 1px solid var(--line); color: var(--dim); font-size: .9375rem; }
+.legal__pend { background: #ffd23f; color: #111; padding: 0 .3em; font-weight: 600; }
+.legal__dl { margin: 0; display: grid; gap: .6rem; }
+.legal__dl div { display: grid; gap: .1rem; padding-bottom: .6rem; border-bottom: 1px solid var(--line); }
+.legal__dl dt { font-size: .8125rem; color: var(--dim); }
+.legal__dl dd { margin: 0; }
+.legal__ul { padding-left: 1.1rem; display: grid; gap: .6rem; }
+.legal__nav { margin-top: 3rem; display: flex; flex-wrap: wrap; gap: 1.2rem; }
+.legal__nav a { color: var(--fg); text-decoration: underline; text-underline-offset: 3px; }
+
+
+.foot__form .foot__consent { display: flex; flex-direction: row; }
+.foot__form .foot__consent input { min-height: 0; padding: 0; width: 1.1rem; height: 1.1rem; }
+
+/* ===================================================================================================================
+   HOME V22 — mensaje principal visible al entrar (sin animación ni scroll), CTA con jerarquía y claim como frase secundaria.
+   Jerarquía: 1 RESERVAR · 2 Explorar SML → · 3 Empresas, hoteles y eventos →  (el contexto es texto, no CTA).
+   =================================================================================================================== */
+.ent__hero {
+  position: absolute; left: 50%; top: clamp(4.5rem, 14vh, 8rem); transform: translateX(-50%);
+  width: min(92vw, 46rem); box-sizing: border-box; padding: 0 .25rem; text-align: center; pointer-events: none;
+}
+/* Velo suave detrás del título: la lectura no depende de lo que haya en el 3D (más marcado en móvil). */
+.ent__hero::before {
+  content: ''; position: absolute; inset: -2.5rem -12% -2rem; z-index: -1;
+  background: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, .55) 0, rgba(0, 0, 0, .3) 55%, rgba(0, 0, 0, 0) 78%);
+}
+.ent__marca { margin: 0 0 .6rem; font-family: var(--ent-mono); font-size: .75rem; letter-spacing: .28em; text-transform: uppercase; color: var(--fg); text-shadow: 0 1px 8px rgba(0, 0, 0, .8); }
+.ent__titulo {
+  margin: 0; font-family: var(--ent-title); font-weight: 900; text-transform: uppercase; color: #fff;
+  font-size: clamp(1.5rem, 6.4vw, 3.4rem); line-height: 1.02; letter-spacing: .01em; text-shadow: 0 2px 22px rgba(0, 0, 0, .75);
+}
+.ent__titulo span { display: block; }
+.ent__disc { margin: .8rem 0 0; font-family: var(--ent-mono); font-size: clamp(.75rem, 2.4vw, .95rem); letter-spacing: .22em; text-transform: uppercase; color: var(--fg); text-shadow: 0 1px 8px rgba(0, 0, 0, .8); }
+
+.ent__actions { bottom: clamp(4.75rem, 11vh, 7rem); gap: .35rem; }
+.ent__reservar {
+  width: 100%; min-height: 3.25rem; padding: .85rem 1rem; box-sizing: border-box;
+  font-family: var(--ent-mono); font-size: .875rem; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; text-align: center;
+  background: var(--fg); color: var(--bg); border: 1px solid var(--fg);
+}
+.ent__reservar:hover, .ent__reservar:focus-visible { background: transparent; color: var(--fg); }
+.ent__explorar {
+  min-height: 2.75rem; padding: 0 .75rem; font-family: var(--ent-mono); font-size: .75rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--fg); text-shadow: 0 1px 6px rgba(0, 0, 0, .85);
+}
+.ent__explorar:hover, .ent__explorar:focus-visible { text-decoration: underline; text-underline-offset: .3em; }
+.ent__contexto { margin: .15rem 0 0; font-family: var(--ent-sans); font-size: .6875rem; letter-spacing: .06em; color: var(--dim); text-align: center; text-shadow: 0 1px 6px rgba(0, 0, 0, .85); }
+.ent__b2bLink { min-height: 2.5rem; font-size: .6875rem; opacity: .75; }
+.ent__b2bLink:hover, .ent__b2bLink:focus-visible { opacity: 1; }
+
+/* El claim pasa a frase cinematográfica secundaria: más ligero que el título, sobre los CTA. */
+.ent__caption { bottom: calc(clamp(4.75rem, 11vh, 7rem) + 12.5rem); }
+.ent__claim { font-size: clamp(1.25rem, 3.6vw, 2rem); font-weight: 800; }
+@media (max-height: 640px) { .ent__claim { font-size: 1.15rem; } .ent__hero { top: 4.25rem; } 
+}
+@media (max-width: 700px) {
+  .ent__caption { bottom: calc(clamp(4.75rem, 11vh, 7rem) + 12.5rem); }
+  .ent__hero::before { background: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, .68) 0, rgba(0, 0, 0, .42) 58%, rgba(0, 0, 0, 0) 80%); }
+  /* En móvil el mensaje manda: el fondo fotográfico baja de intensidad (el laboratorio 3D sigue montado). */
+  .photo { opacity: .4; }
+
+}
+
+/* ===================================================================================================================
+   TRAINING + PLANS (V22 · paso 5) — tres preguntas + precios siempre visibles + starter kit aparte. Una sola columna de lectura,
+   pantalla fija con seis placas (.tr__plate) colgadas de las piezas de la máquina 3D (useStation.js). Mismos tokens que #slot (--sx-*).
+   Rojo SML solo como estado activo / acción principal. Móvil (≤700px): la placa del paso se acopla abajo y la máquina queda arriba.
+   =================================================================================================================== */
+#slot .stage { display: block; padding: 0; }
+#slot .stage::before { display: none; } /* sin fundido: la máquina 3D es la escena y se ve entera */
+.tr { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.tr > * { pointer-events: auto; }
+.tr__kicker { margin: 0 0 .5rem; font-family: var(--sx-mono); font-size: .75rem; letter-spacing: .16em; color: var(--sx-mute); }
+.tr__title { margin: 0; font-family: var(--sx-display); font-weight: 900; text-transform: uppercase; color: var(--sx-ink); font-size: clamp(2.4rem, 5vw, 4.4rem); line-height: .96; letter-spacing: .004em; }
+.tr__intro { margin: .75rem 0 0; max-width: 42ch; font-family: var(--sx-sans); font-weight: 500; font-size: 1.0625rem; line-height: 1.5; color: var(--sx-soft); }
+
+/* ===================================================================================================================
+   PLACA COLGADA DE UN OBJETO 3D (.sp) — 03 · 04 · 05 · 06. El DOM va ligado a una pieza del mundo: useStation.js lo coloca cada fotograma
+   en la proyección de esa pieza (posición, escala por distancia, leve inclinación). Solo la placa del paso en curso se ve (data-on).
+   En ≤700px se acopla abajo (data-dock) y el 3D queda arriba.
+   =================================================================================================================== */
+.sp {
+  position: absolute; left: 0; top: 0; z-index: 3; box-sizing: border-box; width: var(--sp-w, 30rem); max-width: calc(100vw - 2rem);
+  padding: 1.1rem 1.25rem; overflow-y: auto; overscroll-behavior: contain;
+  background: rgba(5, 6, 8, .84); border: 1px solid var(--line); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .35s ease, visibility .35s ease; will-change: transform;
+}
+.sp[data-on="true"] { opacity: 1; visibility: visible; pointer-events: auto; }
+.sp[data-dock="true"] { left: 0; right: 0; top: auto; bottom: 0; width: auto; max-width: none; max-height: 56svh; border-width: 1px 0 0; padding: 1rem 1rem 1.25rem; }
+@media (prefers-reduced-motion: reduce) { .sp { transition: none; } }
+
+/* 03 · la placa de cada paso cuelga de su módulo */
+.al__plate { --sp-w: 26rem; padding: .9rem 1.1rem 1rem; }
+.al__plate .al__stepBody { padding: 0; }
+.al__plate .al__stepText { max-width: none; }
+.al__plate .al__eval { max-width: none; }
+
+/* 04 · cabecera compacta, hilo de pasos y placas de la máquina */
+.tr__head { position: absolute; top: 4.25rem; left: var(--pad-l); max-width: 22rem; text-shadow: var(--sx-shadow); }
+.tr__head .tr__kicker { margin-bottom: .35rem; }
+.tr__head .tr__title { font-size: clamp(1.8rem, 1.2rem + 2.2vw, 3rem); }
+.tr__head .tr__intro { margin-top: .5rem; font-size: .9375rem; }
+.tr__rail { position: absolute; left: var(--pad-l); bottom: 2rem; display: flex; flex-wrap: wrap; gap: .25rem 1.4rem; margin: 0; padding: 0; list-style: none; z-index: 2; }
+.tr__rail button { display: flex; align-items: baseline; gap: .5rem; min-height: 2.75rem; padding: 0; color: var(--sx-mute); text-align: left; cursor: pointer; transition: color .3s; }
+.tr__rail li[data-on="true"] button { color: var(--sx-ink); }
+.tr__rn { font-family: var(--sx-mono); font-size: .75rem; letter-spacing: .12em; }
+.tr__rl { font-family: var(--sx-mono); font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; }
+.tr__rail li[data-on="true"] .tr__rn { color: var(--sx-red); }
+.tr__rail button:focus-visible { outline: 2px solid var(--sx-red); outline-offset: 3px; }
+.tr__plate { --sp-w: 36rem; text-shadow: var(--sx-shadow); }
+.tr__plate[data-wide="true"] { --sp-w: 52rem; }
+.tr__plate .tr__cards--3 { grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr)); }
+.tr__plate .tr__prices, .tr__plate .tr__qs { gap: 1.25rem; }
+.tr__plate .tr__gh { border-top: 0; padding-top: 0; }
+.tr__plate .tr__panel { margin-top: .25rem; }
+@media (max-width: 700px) {
+  .tr__head { top: 3.6rem; right: 1rem; max-width: none; }
+  .tr__head .tr__intro, .tr__head .tr__kicker { display: none; }
+  .tr__rail { left: 1rem; right: 1rem; bottom: auto; top: 6.4rem; gap: .1rem .9rem; }
+  .tr__rl { display: none; }
+  .tr__rail li[data-on="true"] .tr__rl { display: inline; }
+  .tr__plate .tr__cards--3 { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Preguntas */
+.tr__qs { display: grid; gap: 1.75rem; }
+.tr__q { display: grid; gap: .75rem; }
+.tr__qh { margin: 0; display: flex; align-items: baseline; gap: .75rem; font-weight: 400; }
+.tr__qn { font-family: var(--sx-mono); font-size: .75rem; letter-spacing: .14em; color: var(--sx-red); }
+.tr__qt { font-family: var(--sx-display); font-weight: 900; text-transform: uppercase; font-size: clamp(1.4rem, 2.4vw, 1.9rem); line-height: 1; letter-spacing: .02em; color: var(--sx-ink); }
+.tr__opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: .6rem; }
+.tr__q[data-n="3"] .tr__opts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tr__opt {
+  min-height: 3.25rem; padding: .7rem 1rem; text-align: left; background: rgba(5, 6, 8, .55); border: 1px solid var(--sx-hair); color: var(--sx-soft);
+  font-family: var(--sx-display); font-weight: 800; text-transform: uppercase; font-size: 1.25rem; letter-spacing: .04em; line-height: 1.05; cursor: pointer;
+}
+.tr__opt[data-on="true"] { border-color: var(--sx-red); background: var(--sx-red); color: #fff; }
+.tr__opt:focus-visible, .tr__btn:focus-visible, .tr__step button:focus-visible, .tr__clear:focus-visible { outline: 2px solid var(--sx-red); outline-offset: 3px; }
+.tr__clear { justify-self: start; min-height: 2.75rem; padding: 0; font-family: var(--sx-mono); font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: var(--sx-soft); text-decoration: underline; text-underline-offset: 4px; }
+
+/* Paneles de formato (grupo reducido · híbrido) y evaluación */
+.tr__panel, .tr__eval { display: grid; gap: .75rem; justify-items: start; padding: 1.25rem; border: 1px solid var(--sx-hair); border-left: 2px solid var(--sx-red); background: rgba(5, 6, 8, .6); }
+.tr__panel .gf { max-width: 100%; }
+.tr__ph { margin: 0; font-family: var(--sx-display); font-weight: 900; text-transform: uppercase; font-size: clamp(1.6rem, 3vw, 2.3rem); line-height: 1; color: var(--sx-ink); }
+.tr__pt { margin: 0; max-width: 52ch; font-family: var(--sx-sans); font-weight: 500; font-size: 1rem; line-height: 1.5; color: var(--sx-soft); text-wrap: pretty; }
+.tr__rules { margin: 0; padding: 0; list-style: none; display: grid; gap: .25rem; font-family: var(--sx-sans); font-size: .9375rem; line-height: 1.45; color: var(--sx-soft); }
+.tr__mixH { margin: .5rem 0 0; font-family: var(--sx-mono); font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: var(--sx-mute); }
+.tr__mix { margin: 0; padding: 0; list-style: none; display: grid; gap: .4rem; width: 100%; max-width: 26rem; }
+.tr__mix li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .3rem 0; border-bottom: 1px solid var(--sx-hair); }
+.tr__mixN { font-family: var(--sx-display); font-weight: 800; text-transform: uppercase; font-size: 1.35rem; letter-spacing: .03em; color: var(--sx-ink); }
+.tr__step { display: inline-flex; align-items: center; gap: .5rem; }
+.tr__step button { width: 2.75rem; height: 2.75rem; border: 1px solid var(--sx-hair); background: rgba(5, 6, 8, .55); color: var(--sx-ink); font-size: 1.4rem; line-height: 1; cursor: pointer; }
+.tr__step button:disabled { opacity: .35; cursor: default; }
+.tr__step b { min-width: 1.6rem; text-align: center; font-family: var(--sx-display); font-weight: 900; font-size: 1.6rem; color: var(--sx-ink); }
+.tr__read { margin: 0; font-family: var(--sx-sans); font-weight: 600; font-size: 1rem; line-height: 1.4; color: var(--sx-ink); }
+
+/* Botones de acción */
+.tr__btn {
+  display: inline-flex; align-items: center; justify-content: center; text-align: center; min-height: 2.75rem; padding: .7rem 1.1rem; margin-top: auto; text-decoration: none; cursor: pointer;
+  background: transparent; border: 1px solid var(--sx-hair); color: var(--sx-ink); font-family: var(--sx-sans); font-weight: 700; font-size: .8125rem; letter-spacing: .06em; text-transform: uppercase; line-height: 1.15;
+}
+.tr__btn--main, .tr__btn[data-main="true"] { background: var(--sx-red); border-color: var(--sx-red); color: #fff; }
+
+/* Precios */
+.tr__prices { display: grid; gap: 2.25rem; }
+.tr__group { display: grid; gap: .75rem; }
+.tr__gh { margin: 0; padding-top: .75rem; border-top: 1px solid var(--sx-hair); font-family: var(--sx-mono); font-size: .8125rem; font-weight: 400; letter-spacing: .16em; color: var(--sx-soft); }
+.tr__from { margin: 0; display: flex; align-items: baseline; gap: .4rem; color: var(--sx-ink); }
+.tr__from small { font-family: var(--sx-mono); font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: var(--sx-mute); }
+.tr__from b { font-family: var(--sx-display); font-weight: 900; font-size: 2.2rem; line-height: 1; }
+.tr__from span { font-family: var(--sx-mono); font-size: .875rem; color: var(--sx-soft); }
+.tr__fromNote { margin: 0; max-width: 56ch; font-family: var(--sx-sans); font-size: .9375rem; line-height: 1.45; color: var(--sx-soft); text-wrap: pretty; }
+.tr__cards { margin: 0; padding: 0; list-style: none; display: grid; gap: .75rem; }
+.tr__cards--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tr__card { display: flex; flex-direction: column; gap: .5rem; padding: 1rem; border: 1px solid var(--sx-hair); background: rgba(5, 6, 8, .6); min-width: 0; }
+.tr__card[data-dest="true"] { border-color: var(--sx-red); background: rgba(5, 6, 8, .82); }
+.tr__tag { margin: 0; font-family: var(--sx-mono); font-size: .6875rem; letter-spacing: .14em; color: var(--sx-red); }
+.tr__cn { margin: 0; font-family: var(--sx-display); font-weight: 900; text-transform: uppercase; font-size: 1.5rem; line-height: 1; letter-spacing: .02em; color: var(--sx-ink); }
+.tr__price { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: .1rem .3rem; color: var(--sx-ink); }
+.tr__price b { font-family: var(--sx-display); font-weight: 900; font-size: 2.4rem; line-height: .95; }
+.tr__price span { font-family: var(--sx-mono); font-size: .8125rem; letter-spacing: .04em; color: var(--sx-soft); }
+.tr__freq { margin: 0; font-family: var(--sx-sans); font-weight: 700; font-size: .9375rem; color: var(--sx-ink); }
+.tr__ct { margin: 0; font-family: var(--sx-sans); font-size: .9375rem; line-height: 1.45; color: var(--sx-soft); text-wrap: pretty; }
+.tr__card .tr__btn { margin-top: auto; }
+.tr__card .tr__ct { flex: 1 0 auto; }
+
+/* STARTER KIT: accesorio. Sin tarjeta de plan, sin rojo, tipografía pequeña y borde discontinuo: nunca al nivel de un plan. */
+.tr__kit { display: grid; gap: .25rem; max-width: 28rem; padding: .75rem 1rem; border: 1px dashed var(--sx-hair); background: transparent; }
+.tr__kitK { margin: 0; font-family: var(--sx-mono); font-size: .6875rem; letter-spacing: .14em; color: var(--sx-mute); }
+.tr__kitRow { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.tr__kitN { margin: 0; font-family: var(--sx-sans); font-weight: 700; font-size: .9375rem; letter-spacing: .06em; color: var(--sx-soft); }
+.tr__kitP { margin: 0; font-family: var(--sx-sans); font-weight: 700; font-size: 1rem; color: var(--sx-soft); }
+.tr__kitC { margin: 0; font-family: var(--sx-sans); font-size: .9375rem; color: var(--sx-soft); }
+.tr__kitNote { margin: 0; font-family: var(--sx-sans); font-size: .8125rem; line-height: 1.4; color: var(--sx-mute); }
+
+@media (hover: hover) {
+  .tr__opt:hover { border-color: var(--sx-ink); color: var(--sx-ink); }
+  .tr__opt[data-on="true"]:hover { color: #fff; }
+  .tr__btn:hover { border-color: var(--sx-ink); }
+  .tr__clear:hover { color: var(--sx-ink); }
+
+}
+
+/* Tablet y escritorio estrecho: las tarjetas pasan a una columna y la lectura ocupa todo el ancho. */
+@media (max-width: 900px) {
+  .tr__cards--3 { grid-template-columns: minmax(0, 1fr); }
+
+}
+
+/* MÓVIL — experiencia propia: preguntas verticales con botones grandes, tarjetas verticales, fondo casi opaco (3D atenuado). */
+@media (max-width: 700px) {
+  .tr__opts, .tr__q[data-n="3"] .tr__opts { grid-template-columns: minmax(0, 1fr); }
+  .tr__q[data-id="frecuencia"] .tr__opts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tr__opt { min-height: 3.5rem; font-size: 1.35rem; }
+  .tr__btn { width: 100%; min-height: 3rem; font-size: .875rem; }
+  .tr__card { padding: 1.1rem; gap: .6rem; }
+  .tr__price b { font-size: 2.6rem; }
+  .tr__panel, .tr__eval { padding: 1rem; }
+  .tr__mix { max-width: none; }
+  .tr__kit { max-width: none; }
+
+}
+@media (prefers-reduced-motion: reduce) { .tr__opt, .tr__btn { transition: none; } 
+}
+
+/* =====================================================================================================
+   EXPERIENCES (V22 · paso 6) — «SML también sale del gimnasio.» Overlay #xp (Experience/B2B/B2B.jsx).
+   Experiences → Categorías → Selected Work → Case Study → Contacto. Tipografía y fotografía real; sin efectos, sin hover obligatorio.
+   z-index 11 (< navegación, 12): la navegación V22 sigue visible y pulsable (EXPERIENCES → FOUNDER → BOOK sin cerrar antes).
+   Escritorio: columna izquierda libre para la navegación. Móvil: el botón «Menú» ocupa la esquina superior izquierda bajo la cabecera.
+   ===================================================================================================== */
+#xp {
+  --x-display: var(--font-display); --x-sans: var(--font-sans); --x-mono: var(--font-mono);
+  --x-ink: var(--c-ink); --x-soft: var(--c-soft); --x-mute: var(--c-mute); --x-hair: var(--c-hair); --x-red: var(--c-red);
+  position: fixed; inset: 0; z-index: 11; display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
+  color: var(--x-ink); background: rgba(5, 6, 8, .97); outline: none;
+  padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+}
+#xp button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; cursor: pointer; }
+#xp button:focus:not(:focus-visible) { outline: none; }
+#xp :is(button, a, input, select, textarea):focus-visible { outline: 2px solid var(--x-red); outline-offset: 3px; }
+
+.xp__top { display: flex; align-items: center; gap: 1rem; padding: .6rem 1.25rem; border-bottom: 1px solid var(--x-hair); font-family: var(--x-mono); font-size: .72rem; letter-spacing: .1em; }
+.xp__brand { font-weight: 600; }
+.xp__where { flex: 1; min-width: 0; color: var(--x-mute); text-transform: uppercase; }
+.xp__topBtns { display: flex; align-items: center; gap: .8rem; }
+.xp__close { min-height: 2.75rem; padding: 0 .2rem; font-family: var(--x-mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--x-soft); }
+.xp__cta { min-height: 2.75rem; padding: 0 1.3rem; font-family: var(--x-mono); font-size: .74rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--x-ink); border: 1px solid var(--x-red); background: rgba(5, 6, 8, .5); }
+.xp__cta--sm { padding: 0 .9rem; font-size: .6875rem; }
+
+.xp__stage { position: relative; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; outline: none; padding: 0 clamp(1rem, 5vw, 4rem); }
+.xp__sec { max-width: 66rem; padding: clamp(2rem, 7svh, 4.5rem) 0; }
+.xp__sec + .xp__sec { border-top: 1px solid var(--x-hair); }
+@media (min-width: 901px) { .xp__stage { padding-left: 9.5rem; } 
+}
+@media (max-width: 900px) { .xp__stage { padding-top: 3.4rem; } .xp__sec:first-child { padding-top: 1rem; } 
+}
+
+.xp__kick, .xp__k { margin: 0 0 .7rem; font-family: var(--x-mono); font-size: .6875rem; letter-spacing: .16em; text-transform: uppercase; color: var(--x-mute); }
+.xp__k--red { color: var(--x-red); }
+.xp__h1 { margin: 0; font-family: var(--x-display); font-weight: 900; text-transform: uppercase; font-size: clamp(2.8rem, 9vw, 6.4rem); line-height: .88; letter-spacing: .01em; text-wrap: balance; }
+.xp__h1 span { display: block; }
+.xp__h1 span:last-child { color: var(--x-red); }
+.xp__h2 { margin: 0; font-family: var(--x-display); font-weight: 900; text-transform: uppercase; font-size: clamp(2.2rem, 5.6vw, 4.2rem); line-height: .92; text-wrap: balance; }
+.xp__lead { margin: 1rem 0 0; max-width: 40ch; font-family: var(--x-sans); font-weight: 500; font-size: clamp(1.05rem, 1.7vw, 1.3rem); line-height: 1.4; color: var(--x-soft); text-wrap: pretty; }
+.xp__txt { margin: 0; max-width: 56ch; font-family: var(--x-sans); font-size: 1rem; line-height: 1.5; color: var(--x-soft); text-wrap: pretty; }
+.xp__txt b { color: var(--x-ink); font-weight: 600; }
+.xp__sub { margin: .5rem 0 .8rem; font-family: var(--x-sans); font-weight: 600; font-size: 1.05rem; color: var(--x-ink); }
+.xp__link { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0; font-family: var(--x-mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--x-ink); text-decoration: underline; text-decoration-color: var(--x-red); text-underline-offset: .4em; }
+
+.xp__tag { display: inline-block; padding: .25rem .55rem; border: 1px solid var(--x-hair); font-family: var(--x-mono); font-size: .6875rem; letter-spacing: .14em; text-transform: uppercase; color: var(--x-soft); }
+.xp__tag[data-estado="realizado"] { border-color: var(--x-red); color: var(--x-ink); background: rgba(229, 32, 43, .16); }
+.xp__tags { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0 0 .8rem; }
+
+/* Categorías */
+.xp__catsW { margin-top: clamp(1.8rem, 5svh, 3rem); }
+.xp__cats { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--x-hair); }
+.xp__cat { border-bottom: 1px solid var(--x-hair); border-left: 2px solid transparent; }
+.xp__cat[data-on] { border-left-color: var(--x-red); }
+.xp__catB { display: grid; grid-template-columns: minmax(10rem, 17rem) minmax(0, 1fr); align-items: baseline; gap: .3rem 1.5rem; width: 100%; min-height: 3.5rem; padding: .9rem .8rem; text-align: left; color: var(--x-soft); }
+.xp__catN { font-family: var(--x-display); font-weight: 900; text-transform: uppercase; font-size: clamp(1.9rem, 3.8vw, 2.9rem); line-height: .95; color: var(--x-ink); }
+.xp__catL { font-family: var(--x-sans); font-size: .95rem; line-height: 1.4; }
+.xp__catD { display: grid; gap: .3rem; padding: 0 .8rem 1rem; }
+.xp__resp { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .8rem; margin: 0; font-family: var(--x-sans); font-size: .95rem; color: var(--x-ink); }
+.xp__acts { display: flex; flex-wrap: wrap; gap: .2rem 1.6rem; }
+@media (hover: hover) and (pointer: fine) { .xp__cat:not([data-on]):hover { border-left-color: var(--x-hair); } .xp__link:hover, .xp__close:hover { color: #fff; } 
+}
+@media (max-width: 700px) { .xp__catB { grid-template-columns: 1fr; } 
+}
+
+/* Selected Work */
+.xp__proj { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 1.4rem clamp(1.5rem, 4vw, 3.5rem); align-items: center; }
+.xp__projM, .xp__figM { position: relative; overflow: hidden; border: 1px solid var(--x-hair); background: #0a0c10; }
+.xp__projM { aspect-ratio: 16 / 10; }
+.xp__el { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.xp__projM .xp__el { object-position: 50% 42%; }
+@media (max-width: 800px) { .xp__proj { grid-template-columns: 1fr; } 
+}
+
+/* Case study */
+.xp__case { display: grid; }
+.xp__blk { display: grid; grid-template-columns: minmax(9rem, 15rem) minmax(0, 1fr); gap: .8rem clamp(1.5rem, 4vw, 3rem); padding: 1.6rem 0; border-top: 1px solid var(--x-hair); }
+.xp__k + .xp__blk { border-top: 0; padding-top: .6rem; }
+.xp__blkH { display: grid; gap: .3rem; align-content: start; }
+.xp__blkK { font-family: var(--x-mono); font-size: .75rem; font-weight: 600; letter-spacing: .18em; color: var(--x-red); }
+.xp__blkQ { margin: 0; font-family: var(--x-display); font-weight: 900; text-transform: uppercase; font-size: clamp(1.5rem, 2.8vw, 2.2rem); line-height: .95; }
+.xp__blkB { display: grid; gap: .8rem; min-width: 0; align-content: start; }
+.xp__datos { display: grid; margin: 0; }
+.xp__datos div { display: flex; flex-wrap: wrap; gap: .1rem 1rem; padding: .5rem 0; border-top: 1px solid var(--x-hair); }
+.xp__datos dt { min-width: 6rem; font-family: var(--x-mono); font-size: .6875rem; letter-spacing: .16em; text-transform: uppercase; color: var(--x-red); }
+.xp__datos dd { margin: 0; font-family: var(--x-sans); font-weight: 500; color: var(--x-ink); }
+.xp__media { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: .9rem; margin-top: .4rem; }
+.xp__fig { margin: 0; display: grid; gap: .45rem; align-content: start; min-width: 0; }
+.xp__figM { aspect-ratio: 4 / 5; }
+.xp__fig figcaption { font-family: var(--x-sans); font-size: .85rem; line-height: 1.35; color: var(--x-soft); }
+@media (max-width: 800px) { .xp__blk { grid-template-columns: 1fr; } .xp__media { grid-template-columns: 1fr; } 
+}
+
+/* Contacto */
+.xp__ct { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 1.5rem clamp(1.5rem, 4vw, 4rem); align-items: start; }
+.xp__ctT .xp__link { margin-top: 1rem; }
+.xp__form { display: grid; gap: .8rem; }
+.xp__form label { display: grid; gap: .25rem; min-width: 0; }
+.xp__form label > span { font-family: var(--x-mono); font-size: .6875rem; letter-spacing: .14em; text-transform: uppercase; color: var(--x-mute); }
+.xp__form :is(input:not([type="checkbox"]), select, textarea) { width: 100%; min-height: 2.9rem; padding: .55rem .7rem; background: rgba(5, 6, 8, .6); border: 1px solid var(--x-hair); border-radius: 0; color: var(--x-ink); font-family: var(--x-sans); font-size: 1rem; color-scheme: dark; }
+.xp__form .xp__consent { display: flex; align-items: flex-start; gap: .6rem; }
+.xp__form .xp__consent input { width: 1.1rem; height: 1.1rem; margin-top: .2rem; flex: none; accent-color: var(--x-red); }
+.xp__form .xp__consent span { font-family: var(--x-sans); font-size: .875rem; letter-spacing: 0; text-transform: none; line-height: 1.4; color: var(--x-mute); }
+.xp__consent a, .xp__note a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.xp__send { display: grid; gap: .6rem; justify-items: start; }
+.xp__note { margin: 0; max-width: 44ch; font-family: var(--x-sans); font-size: .8rem; color: var(--x-mute); }
+.xp__err { margin: 0; font-family: var(--x-sans); font-size: .85rem; color: #ff8a90; }
+@media (max-width: 800px) { .xp__ct { grid-template-columns: 1fr; } 
+}
+
+/* CTA de contacto fijo (solo móvil): visible mientras no se está en el contacto. En escritorio lo cubre el botón de la cabecera. */
+.xp__bar { display: none; }
+@media (max-width: 900px) {
+  .xp__bar { display: block; padding: .6rem 1rem; border-top: 1px solid var(--x-hair); background: rgba(5, 6, 8, .98); }
+  .xp__bar .xp__cta { width: 100%; }
+  .xp__cta--top { display: none; }
+  .xp__top { padding: .4rem 1rem; }
+
+}
+
+/* =====================================================================================================
+   05 · SOBRE CHEN — exposición editorial (ProofChen.jsx). Va al final a propósito: sustituye las reglas
+   anteriores de .pf (rejilla índice+visor) sin tocar ninguna otra escena. El 3D (Archive) es el espacio;
+   esto es solo información: una placa de foto con plano trasero, el hilo de estaciones y el texto.
+   ===================================================================================================== */
+.pf {
+  position: absolute; inset: 0; display: block; pointer-events: none;
+  font-family: var(--font-sans);
+}
+.pf > * { pointer-events: auto; }
+
+/* Hilo de estaciones (índice): una regla fina con cuatro cotas. */
+.pf__rule { position: absolute; top: 4.25rem; left: var(--pad-l); right: 3.25rem; display: flex; gap: 1.75rem; margin: 0; padding: 0; z-index: 2; }
+.pf__rule li { flex: none; }
+.pf__rule button { display: flex; align-items: baseline; gap: .6rem; min-height: 2.75rem; padding: 0; color: var(--dim); text-align: left; transition: color .3s; }
+.pf__rule li[data-on="true"] button { color: var(--fg); }
+.pf__rn { font-family: var(--font-mono); font-size: .75rem; letter-spacing: .12em; }
+.pf__rl { font-family: var(--font-mono); font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; }
+.pf__rule li[data-on="true"] .pf__rn { color: var(--accent); }
+
+/* Foto de Chen: cuelga del pilar de la primera estación (por su lado izquierdo). Plano trasero oscuro desplazado = profundidad.
+   Al avanzar la cámara queda atrás en el espacio: perspectiva real, no una placa que se encoge con CSS. */
+.pf__plate { --sp-w: 17rem; padding: 0; background: none; border: 0; -webkit-backdrop-filter: none; backdrop-filter: none; overflow: visible; }
+.pf__plate::before {
+  content: ''; position: absolute; inset: 0; transform: translate(-.7rem, .7rem);
+  background: rgba(7, 9, 13, .82); border: 1px solid var(--line); z-index: 0;
+}
+.pf__plate .pf__img {
+  position: relative; z-index: 1; display: block; width: 100%; height: 23rem; max-width: none; max-height: none; margin: 0;
+  object-fit: cover; object-position: 66% 50%;
+  border: 1px solid rgba(169, 189, 221, .28);
+  box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, .55);
+  filter: saturate(.8) contrast(1.04) brightness(.92);
+}
+.pf__cap {
+  position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; margin: 0; padding: 2.5rem .9rem .8rem;
+  background: linear-gradient(transparent, rgba(5, 6, 8, .88));
+  font-family: var(--font-mono); font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: rgba(226, 231, 240, .85);
+}
+
+/* Texto de cada estación: cuelga del canto delantero de SU pilar, por el lado derecho. Sin caja (solo un velo para leer sobre el 3D). */
+.pf__est {
+  --sp-w: min(40rem, 46vw); max-width: calc(100vw - 2rem);
+  background: linear-gradient(90deg, rgba(5, 6, 8, .78), rgba(5, 6, 8, .5)); border: 0; border-left: 1px solid var(--line);
+  padding: 1.25rem 1.5rem; text-shadow: 0 1px 14px rgba(0, 0, 0, .75);
+}
+
+.pf__name { font-family: var(--font-display); font-weight: 800; text-transform: uppercase; line-height: .9; letter-spacing: .01em; font-size: clamp(2.75rem, 1.6rem + 4vw, 5.25rem); margin: 0 0 1rem; }
+.pf__lede { font-family: var(--font-serif); font-style: italic; font-size: clamp(1.35rem, 1rem + 1.2vw, 2rem); line-height: 1.2; color: var(--fg); margin: 0 0 1.25rem; }
+.pf__texto { max-width: 52ch; font-size: 1.0625rem; line-height: 1.6; color: rgba(226, 231, 240, .88); margin: 0 0 .75rem; }
+.pf__h { font-family: var(--font-display); font-weight: 800; text-transform: uppercase; line-height: 1; letter-spacing: .01em; font-size: clamp(2rem, 1.4rem + 2.6vw, 3.25rem); margin: 0 0 1.25rem; text-wrap: balance; }
+
+/* 02 · Trayectoria: datos como pie editorial, con una cota fina como guía. */
+.pf__datos { display: grid; gap: 1.25rem; margin: 0; max-width: 34rem; }
+.pf__dato { display: grid; gap: .35rem; padding-top: .8rem; border-top: 1px solid var(--line); }
+.pf__dato dt { font-family: var(--font-mono); font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+.pf__dato dd { margin: 0; font-family: var(--font-display); font-weight: 700; text-transform: uppercase; font-size: clamp(1.4rem, 1rem + 1.4vw, 2.1rem); line-height: 1.05; }
+
+/* 03 · Alumnos: una reseña protagonista en serif + dos secundarias discretas. */
+.pf__rating { display: flex; flex-wrap: wrap; gap: .4rem .9rem; margin: 0 0 1.1rem; font-family: var(--font-mono); font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+.pf__rating span { color: var(--dim); }
+.pf__main { position: relative; margin: 0 0 1.25rem; padding-top: 1.6rem; max-width: 34ch; }
+.pf__main::before { content: '“'; position: absolute; top: -.35rem; left: -.05rem; font-family: var(--font-serif); font-size: 3.5rem; line-height: 1; color: var(--accent); opacity: .7; }
+.pf__main p { margin: 0; font-family: var(--font-serif); font-size: clamp(1.3rem, 1rem + 1.2vw, 2rem); line-height: 1.25; color: var(--fg); }
+.pf .pf__resenas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; margin: 0 0 .5rem; padding: 0; max-width: 40rem; }
+.pf .pf__resenas li { padding: .8rem 0 0; border-left: 0; border-top: 1px solid var(--line); font-size: .9375rem; line-height: 1.5; color: rgba(226, 231, 240, .78); }
+.pf__link { color: var(--fg); }
+
+/* 04 · Siguiente paso */
+.pf__eval-k { font-family: var(--font-mono); font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 .8rem; }
+.pf__precio { color: var(--accent); white-space: nowrap; }
+.pf__nota { max-width: 52ch; font-size: .9375rem; line-height: 1.5; color: var(--dim); margin: 0 0 1.25rem; }
+.pf__cta { display: inline-flex; align-items: center; justify-content: center; min-height: 3rem; padding: .8rem 1.6rem; border: 1px solid var(--fg); background: rgba(5, 6, 8, .5); font-family: var(--font-sans); font-weight: 600; font-size: .9375rem; letter-spacing: .04em; transition: background .2s, color .2s; }
+.pf__cta:hover { background: var(--fg); color: var(--bg); }
+
+/* Móvil: la placa del texto se acopla abajo (data-dock) y el archivo queda arriba; la foto solo acompaña a la primera estación. */
+@media (max-width: 820px) {
+  .pf__rule { top: 3.6rem; left: var(--pad-l); right: 1.25rem; gap: .25rem 1rem; }
+  .pf__rl { display: none; }
+  .pf__rule li[data-on="true"] .pf__rl { display: inline; }
+  .pf__est { --sp-w: min(40rem, 92vw); }
+  .pf__est[data-dock="true"] { background: rgba(5, 6, 8, .94); border-left: 0; }
+  .pf__plate[data-dock="true"] { display: none; }
+  .pf__name { font-size: clamp(2.6rem, 14vw, 4rem); margin-bottom: .6rem; }
+  .pf__lede { font-size: 1.25rem; margin-bottom: .9rem; }
+  .pf__texto { font-size: 1rem; }
+  .pf .pf__resenas { grid-template-columns: 1fr; gap: .9rem; }
+  .pf__main p { font-size: 1.3rem; }
+
+}
+@media (prefers-reduced-motion: reduce) {
+  .pf__img, .pf__est { transition: none; animation: none; }
+
+}
+
+/* =====================================================================================================
+   ESTUDIO DE COMBATE — Nivel 2 del MÉTODO SML. Overlay #es (Experience/Estudio/Estudio.jsx). Misma familia que #xp (Experiences):
+   z-index 11 (< navegación, 12). Fondo translúcido: el laboratorio 3D sigue presente detrás. Jerarquía IDEA → PERSONA → EXPERIENCIA → INFORMACIÓN.
+   ===================================================================================================== */
+#es {
+  --x-display: var(--font-display); --x-sans: var(--font-sans); --x-mono: var(--font-mono);
+  --x-ink: var(--c-ink); --x-soft: var(--c-soft); --x-mute: var(--c-mute); --x-hair: var(--c-hair); --x-red: var(--c-red);
+  position: fixed; inset: 0; z-index: 11; display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
+  color: var(--x-ink); outline: none;
+  background: radial-gradient(120% 90% at 70% 0%, rgba(229, 32, 43, .09), transparent 55%), rgba(5, 6, 8, .94);
+  padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+}
+#es button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; cursor: pointer; }
+#es :is(button, a):focus-visible { outline: 2px solid var(--x-red); outline-offset: 3px; }
+#es button:focus:not(:focus-visible) { outline: none; }
+.es__top { display: flex; align-items: center; gap: 1rem; padding: .6rem 1.25rem; border-bottom: 1px solid var(--x-hair); font-family: var(--x-mono); font-size: .72rem; letter-spacing: .1em; }
+.es__brand { font-weight: 600; }
+.es__where { flex: 1; min-width: 0; color: var(--x-mute); text-transform: uppercase; }
+.es__close { min-height: 2.75rem; padding: 0 .2rem; font-family: var(--x-mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--x-soft); }
+.es__body { display: grid; grid-template-columns: 1fr; min-height: 0; }
+.es__stage { position: relative; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; outline: none; padding: 0 clamp(1rem, 6vw, 5rem); scroll-snap-type: none; }
+.es__idx { display: none; }
+@media (min-width: 901px) {
+  .es__body { grid-template-columns: 9.5rem 16rem minmax(0, 1fr); }
+  .es__body::before { content: ''; }
+  .es__idx { display: block; grid-column: 2; align-self: center; padding-right: 1rem; }
+  .es__stage { grid-column: 3; }
+  .es__idx ol { display: grid; gap: .1rem; border-left: 1px solid var(--x-hair); }
+  .es__idx li { border-left: 2px solid transparent; margin-left: -1px; }
+  .es__idx li[data-on] { border-left-color: var(--x-red); }
+  .es__idx button { display: grid; grid-template-columns: 2rem 1fr; gap: .5rem; align-items: baseline; width: 100%; min-height: 2.5rem; padding: .35rem .8rem; text-align: left; font-family: var(--x-mono); font-size: .6875rem; letter-spacing: .12em; text-transform: uppercase; color: var(--x-mute); }
+  .es__idx li[data-on] button { color: var(--x-ink); }
+  .es__bar { display: none; }
+}
+.es__cap { max-width: 52rem; min-height: 78svh; display: flex; flex-direction: column; justify-content: center; gap: 1.4rem; padding: clamp(3rem, 12svh, 7rem) 0; }
+.es__cap + .es__cap { border-top: 1px solid var(--x-hair); }
+.es__capK { font-family: var(--x-mono); font-size: .6875rem; letter-spacing: .18em; text-transform: uppercase; color: var(--x-mute); }
+.es__capK b { color: var(--x-red); font-weight: 600; }
+.es__capB { display: grid; gap: 1.1rem; }
+.es__h { margin: 0; font-family: var(--x-display); font-weight: 900; text-transform: uppercase; font-size: clamp(2.2rem, 6.4vw, 4.8rem); line-height: .92; letter-spacing: .01em; text-wrap: balance; }
+.es__h span { display: block; }
+.es__h span:not(:first-child) { color: var(--x-soft); }
+.es__q { margin: .6rem 0; padding-left: 1rem; border-left: 2px solid var(--x-red); font-family: var(--x-display); font-weight: 800; text-transform: uppercase; font-size: clamp(1.6rem, 4vw, 2.9rem); line-height: .98; text-wrap: balance; color: #fff; }
+.es__q span { display: block; }
+.es__p { margin: 0; max-width: 46ch; font-family: var(--x-sans); font-weight: 500; font-size: clamp(1.05rem, 1.6vw, 1.25rem); line-height: 1.5; color: var(--x-soft); text-wrap: pretty; }
+.es__l { display: grid; gap: .1rem; margin: .3rem 0; }
+.es__l li { font-family: var(--x-display); font-weight: 800; text-transform: uppercase; font-size: clamp(1.3rem, 3vw, 2.1rem); line-height: 1.05; color: var(--x-ink); }
+.es__sist { display: flex; flex-wrap: wrap; gap: .4rem 1.4rem; margin: .3rem 0; }
+.es__sist li { font-family: var(--x-display); font-weight: 900; text-transform: uppercase; font-size: clamp(2rem, 6vw, 4rem); line-height: .95; }
+.es__sist li:nth-child(2) { color: var(--x-red); }
+.es__firma { display: grid; margin: 0; font-family: var(--x-display); font-weight: 900; text-transform: uppercase; font-size: clamp(2.4rem, 7.6vw, 5.6rem); line-height: .9; }
+.es__firma span:not(:first-child) { color: var(--x-soft); }
+.es__firma span:last-child { color: var(--x-red); }
+.es__marca { margin: 1.2rem 0 0; font-family: var(--x-mono); font-size: .8rem; letter-spacing: .3em; text-transform: uppercase; color: var(--x-ink); }
+.es__acts { display: flex; flex-wrap: wrap; gap: .8rem; margin-top: 1.2rem; }
+.es__cta { min-height: 2.75rem; padding: 0 1.3rem; font-family: var(--x-mono); font-size: .74rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--x-ink); border: 1px solid var(--x-hair); background: rgba(5, 6, 8, .5); }
+.es__cta--red { border-color: var(--x-red); }
+/* Aparición sutil al entrar el capítulo */
+.es__cap .es__capB > * { opacity: 0; transform: translateY(14px); transition: opacity .7s ease, transform .7s ease; }
+.es__cap[data-in] .es__capB > * { opacity: 1; transform: none; }
+.es__cap[data-in] .es__capB > *:nth-child(2) { transition-delay: .08s; } .es__cap[data-in] .es__capB > *:nth-child(3) { transition-delay: .16s; }
+@media (prefers-reduced-motion: reduce) { .es__cap .es__capB > * { opacity: 1; transform: none; transition: none; } }
+@media (hover: hover) and (pointer: fine) { .es__close:hover, .es__idx button:hover { color: #fff; } }
+/* Móvil: lectura progresiva por capítulos; barra de capítulo fija abajo; el botón «Menú» de la navegación ocupa la esquina superior izquierda */
+@media (max-width: 900px) {
+  .es__stage { padding-top: 3.4rem; }
+  .es__cap { min-height: 70svh; padding: 2.2rem 0; }
+  .es__bar { display: flex; justify-content: space-between; gap: 1rem; padding: .6rem 1rem; border-top: 1px solid var(--x-hair); background: rgba(5, 6, 8, .98); font-family: var(--x-mono); font-size: .6875rem; letter-spacing: .14em; text-transform: uppercase; color: var(--x-mute); }
+}
+/* Entrada al Estudio desde Explore (enlace secundario; la interfaz queda por debajo de los personajes) */
+.ex__estudio { display: inline-flex; align-items: center; min-height: 2.75rem; margin-top: .4rem; padding: 0; font-family: var(--font-mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--c-ink); text-decoration: underline; text-decoration-color: var(--c-red); text-underline-offset: .4em; }
+
+/* =====================================================================================================
+   CONTINUIDAD VISUAL GLOBAL — misma sala SML después del HERO. Capa ADITIVA: no sustituye ninguna variable de escena (--cs-*, --al-*,
+   --sx-*, --ex-*, --x-*…); solo da a todas un vocabulario común (profundidad, luz localizada, líneas de laboratorio, superficies translúcidas)
+   y atenúa las superficies que se leían como «panel web pegado al 3D». Cada escena conserva su personalidad: cambia la presentación, no el contenido.
+   Va al final a propósito (misma especificidad → gana). Sin fuentes, rojos ni componentes nuevos: todo sale de --font-*, --c-*, --accent.
+   ===================================================================================================== */
+:root {
+  /* Profundidad: tres planos (fondo · medio · primer plano) */
+  --cx-z-world: 0; --cx-z-mid: 1; --cx-z-front: 2;
+  /* Oscuridad controlada: viñeta y velos atmosféricos (nunca cajas) */
+  --cx-vignette: radial-gradient(ellipse 85% 75% at 50% 50%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, .55) 100%);
+  --cx-veil-l: linear-gradient(90deg, rgba(5, 6, 8, .86) 0, rgba(5, 6, 8, .58) 55%, rgba(5, 6, 8, 0) 100%);
+  --cx-veil-b: linear-gradient(0deg, rgba(5, 6, 8, .9) 0, rgba(5, 6, 8, .55) 60%, rgba(5, 6, 8, 0) 100%);
+  /* Superficies translúcidas (para texto colocado DENTRO del laboratorio) */
+  --cx-surface: rgba(5, 6, 8, .62);
+  --cx-surface-hi: rgba(5, 6, 8, .74);
+  --cx-blur: blur(10px) saturate(1.1);
+  /* Líneas estructurales y acotaciones */
+  --cx-line: rgba(217, 221, 230, .16);
+  --cx-line-hi: rgba(217, 221, 230, .34);
+  --cx-grid: rgba(143, 179, 255, .05);
+  /* Luz localizada (halo) y acento */
+  --cx-halo: radial-gradient(closest-side at 50% 50%, rgba(143, 179, 255, .14), rgba(143, 179, 255, 0) 80%);
+  --cx-halo-red: radial-gradient(closest-side at 50% 50%, rgba(229, 32, 43, .10), rgba(229, 32, 43, 0) 80%);
+  --cx-accent: var(--c-red);
+  --cx-shadow-text: var(--c-shadow);
+  /* Cota de esquina: la marca de «módulo de laboratorio» (sustituye al borde de tarjeta) */
+  --cx-tick: .7rem;
+}
+
+/* Acotación de esquina reutilizable: dos esquinas opuestas, sin caja. */
+.sp:not(.pf__plate):not(.pf__est)::before, .sp:not(.pf__plate):not(.pf__est)::after, .tr__card::before, .tr__card::after {
+  content: ''; position: absolute; width: var(--cx-tick); height: var(--cx-tick); pointer-events: none; border: 1px solid var(--cx-line-hi); opacity: .8;
+}
+.sp:not(.pf__plate):not(.pf__est)::before, .tr__card::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.sp:not(.pf__plate):not(.pf__est)::after, .tr__card::after { right: -1px; bottom: -1px; border-left: 0; border-top: 0; }
+.tr__card { position: relative; }
+
+/* HERO → BRIDGE → DESCUBRIR: barras de cine con borde fundido (el corte no se nota como cambio de página) y viñeta común. */
+.bridge__bar--top::after, .bridge__bar--bottom::after { content: ''; position: absolute; left: 0; right: 0; height: 1.6rem; pointer-events: none; }
+.bridge__bar--top::after { top: 100%; background: linear-gradient(180deg, var(--bg), rgba(5, 6, 8, 0)); }
+.bridge__bar--bottom::after { bottom: 100%; background: linear-gradient(0deg, var(--bg), rgba(5, 6, 8, 0)); }
+.bridge__vignette { background: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0) calc(30% - var(--bridge-p) * 4%), rgba(0, 0, 0, .7) 100%); }
+
+/* DESCUBRIR: el panel pasa de columna opaca a interfaz de análisis sobre el mundo (atmósfera + línea de laboratorio, sin caja). */
+.ex__panel {
+  background: linear-gradient(90deg, rgba(5, 6, 8, .9) 0%, rgba(5, 6, 8, .74) 62%, rgba(5, 6, 8, 0) 100%);
+}
+.ex__panel::before {
+  content: ''; position: absolute; top: 4rem; bottom: 4rem; left: calc(var(--pad-l) - 1.1rem); width: 1px; pointer-events: none;
+  background: linear-gradient(180deg, transparent, var(--cx-line-hi) 18%, var(--cx-line-hi) 82%, transparent);
+}
+.ex__body::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: var(--cx-vignette);
+}
+.ex__title, .ex__h { text-shadow: var(--tx-head-shadow); }
+.ex__mode, .ex__disc { border-top-color: var(--cx-line); }
+@media (max-aspect-ratio: 11/10) {
+  .ex__panel { background: linear-gradient(180deg, rgba(5, 6, 8, 0) 0, rgba(5, 6, 8, .82) 1.6rem, rgba(5, 6, 8, .9) 100%); }
+  .ex__panel::before { display: none; }
+}
+
+/* MÉTODO: los pasos son fases de un protocolo sobre el mundo; la superficie es atmósfera translúcida, no un bloque opaco. */
+#asesoria-lab { --al-panel: rgba(5, 6, 8, .5); }
+.al__step { border-top-color: var(--cx-line); }
+.al__step:last-child { border-bottom-color: var(--cx-line); }
+.chapter--flow .al__wrap {
+  background: linear-gradient(to top, rgba(5, 6, 8, .72) 0, rgba(5, 6, 8, .38) 48%, rgba(5, 6, 8, 0) 72%);
+}
+
+/* ENTRENAMIENTO: módulos de decisión dentro de la máquina (translúcidos, con cotas), no tarjetas de precio. */
+#slot .stage::before { background: linear-gradient(90deg, rgba(5, 6, 8, .78) 0, rgba(5, 6, 8, .5) 48%, rgba(5, 6, 8, .1) 100%); }
+.sp:not(.pf__plate):not(.pf__est) { background: var(--cx-surface-hi); border-color: var(--cx-line); -webkit-backdrop-filter: var(--cx-blur); backdrop-filter: var(--cx-blur); }
+.tr__card { background: rgba(5, 6, 8, .46); border-color: var(--cx-line); }
+.tr__card[data-dest="true"] { background: rgba(5, 6, 8, .66); }
+
+/* FAQ: resolución de dudas dentro del laboratorio: luz localizada sobre el grafito, mismas líneas, mismo rojo/acento. */
+.faq { background: radial-gradient(70% 60% at 18% 0%, rgba(143, 179, 255, .07), rgba(143, 179, 255, 0) 70%), radial-gradient(40% 40% at 92% 100%, rgba(229, 32, 43, .05), rgba(229, 32, 43, 0) 70%), var(--bg); }
+
+/* CHEN: archivo de evidencia — el texto cuelga del pilar con una cota, no con caja. */
+.pf__est { border-left-color: var(--cx-line-hi); }
+.pf__rule li[data-on="true"] .pf__rn { color: var(--cx-accent); }
+
+/* RESERVA: puerta de acceso — el panel es el mismo vidrio translúcido del resto. */
+.rs__body { background: var(--cx-surface-hi); -webkit-backdrop-filter: var(--cx-blur); backdrop-filter: var(--cx-blur); border-color: var(--cx-line); }
+.rs__path { background: rgba(5, 6, 8, .4); border-color: var(--cx-line); }
+
+/* ESTUDIO DE COMBATE: mismo vocabulario (viñeta + rejilla de laboratorio + halo), carácter editorial propio. */
+#es {
+  background:
+    var(--cx-vignette),
+    radial-gradient(120% 90% at 70% 0%, rgba(229, 32, 43, .09), transparent 55%),
+    rgba(5, 6, 8, .92);
+}
+#es::before {
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image: linear-gradient(var(--cx-grid) 1px, transparent 1px), linear-gradient(90deg, var(--cx-grid) 1px, transparent 1px); background-size: 4rem 4rem;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 80% 0%, #000 0, transparent 75%); mask-image: radial-gradient(ellipse 70% 60% at 80% 0%, #000 0, transparent 75%);
+}
+#es > * { position: relative; z-index: 1; }
+.es__idx ol { border-left-color: var(--cx-line); }
+
+/* NAVEGACIÓN: parte del sistema (regla de laboratorio fina detrás de las entradas), no una navbar. Desktop solamente. */
+@media (min-width: 901px) {
+  nav.nav .nav__list::before {
+    content: ''; position: absolute; left: 0; top: -.6rem; bottom: -.6rem; width: 1px; pointer-events: none;
+    background: linear-gradient(180deg, transparent, var(--cx-line-hi) 20%, var(--cx-line-hi) 80%, transparent);
+  }
+  nav.nav .nav__list { position: relative; }
+}
+@media (prefers-reduced-motion: reduce) { .sp, .tr__card { transition: none; } }
+
+/* =====================================================================================================
+   v28 · AJUSTE A PLANOS — segunda pasada sobre la capa de continuidad (solo presentación; sin tocar JSX, copy, precios ni lógica).
+   Corrige lo que la primera pasada dejaba fuera de plano: nada de vidrio (backdrop-filter), paneles sin caja, estado activo con la mayor
+   jerarquía, evaluación como terminal, módulos de Training como lectura de la máquina, Estudio con el laboratorio visible detrás.
+   Rojo solo para acción / selección / punto de decisión. Sin fuentes ni colores nuevos.
+   ===================================================================================================== */
+
+/* 0 · SIN VIDRIO: placas del mundo (.sp) y Reserva = atmósfera oscura con cota lateral, no panel borroso. */
+.sp:not(.pf__plate):not(.pf__est), .rs__body { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.sp:not(.pf__plate):not(.pf__est) {
+  background: linear-gradient(100deg, rgba(5, 6, 8, .92) 0, rgba(5, 6, 8, .78) 100%);
+  border-width: 0 0 0 1px; border-color: var(--cx-line-hi);
+}
+.sp[data-dock="true"]:not(.pf__plate):not(.pf__est) { border-width: 1px 0 0 0; }
+
+/* 1 · DESCUBRIR (Character Select): la información es un HUD sobre el mundo; el personaje manda. */
+.ex__panel { background: linear-gradient(90deg, rgba(5, 6, 8, .84) 0, rgba(5, 6, 8, .56) 58%, rgba(5, 6, 8, 0) 100%); }
+.ex__intro, .ex__text, .ex__modeLine, .ex__discLine, .ex__gloss dd { text-shadow: 0 1px 12px rgba(0, 0, 0, .85), 0 0 2px rgba(0, 0, 0, .9); }
+/* opciones no elegidas: bajan de protagonismo sin desaparecer */
+.ex__modes:has(.ex__mode[data-on="true"]) .ex__mode[data-on="false"] { opacity: .55; transition: opacity .25s ease; }
+.ex__modes:has(.ex__mode[data-on="true"]) .ex__mode[data-on="false"]:hover { opacity: .9; }
+/* disciplina activa: luz de su color en el borde + nombre dominante; el concepto va justo debajo */
+.ex__disc[data-on="true"] { box-shadow: -1px 0 22px -8px rgba(var(--ex-rgb), .6); }
+.ex__tagline { font-size: clamp(1.25rem, 1rem + 1vw, 1.75rem); line-height: 1.05; }
+/* los títulos de bloque pasan a acotaciones: la lectura deja de ser TÍTULO → PÁRRAFO → LISTA */
+.ex__dh { font-family: var(--ex-mono); font-weight: 500; font-size: .72rem; letter-spacing: .14em; color: var(--ex-mute); }
+/* etiquetas sin caja */
+.ex__tags li { border: 0; border-bottom: 1px solid var(--cx-line-hi); padding: .1rem 0 .2rem; }
+@media (min-aspect-ratio: 11/10) {
+  .ex__disc[data-on="true"] .ex__discName { font-size: clamp(2.3rem, 1.5rem + 2.2vw, 3.5rem); line-height: .95; }
+}
+@media (max-aspect-ratio: 11/10) {
+  .ex__panel { background: linear-gradient(180deg, rgba(5, 6, 8, 0) 0, rgba(5, 6, 8, .7) 2.6rem, rgba(5, 6, 8, .9) 100%); }
+  /* el vídeo se disuelve en el contenido: continúa la escena, no es «vídeo + documento debajo» */
+  .ex__media { -webkit-mask-image: linear-gradient(180deg, #000 68%, transparent 100%); mask-image: linear-gradient(180deg, #000 68%, transparent 100%); }
+}
+
+/* 2 · MÉTODO: IDEA (titular, más contenido) frente a PROCESO (estaciones de un protocolo con raíl); evaluación = terminal. */
+@media (min-width: 901px) {
+  .al__titular { font-size: clamp(1.8rem, 3.2vw, 3.1rem); }
+  .al__name { font-size: clamp(1.5rem, 2.5vw, 2.2rem); }
+}
+.al__steps { margin-left: .4rem; padding-left: 1.2rem; border-left: 1px solid var(--cx-line-hi); }
+.al__step { position: relative; border-top-color: rgba(217, 221, 230, .08); }
+.al__step:last-child { border-bottom-color: rgba(217, 221, 230, .08); }
+.al__step::before {
+  content: ''; position: absolute; left: -1.2rem; top: 1.2rem; width: .5rem; height: .5rem; transform: translateX(-50%);
+  border: 1px solid var(--cx-line-hi); background: var(--bg); transition: background .25s ease, border-color .25s ease;
+}
+.al__step[data-open="true"]::before { background: var(--accent); border-color: var(--accent); }
+.al__eval {
+  position: relative; border: 0; border-left: 2px solid var(--accent);
+  background: linear-gradient(90deg, rgba(5, 6, 8, .84) 0, rgba(5, 6, 8, .4) 100%);
+}
+.al__eval::before, .al__eval::after { content: ''; position: absolute; right: 0; width: .7rem; height: .7rem; pointer-events: none; border: 0 solid var(--cx-line-hi); }
+.al__eval::before { top: 0; border-top-width: 1px; border-right-width: 1px; }
+.al__eval::after { bottom: 0; border-bottom-width: 1px; border-right-width: 1px; }
+.al__evalKicker::before { content: ''; display: inline-block; width: .45rem; height: .45rem; margin-right: .6rem; vertical-align: .08em; background: var(--accent); }
+
+/* 3 · ENTRENAMIENTO: la máquina manda; los módulos son lectura de la configuración, no tarjetas de precio. */
+.tr__card {
+  border: 0; border-top: 1px solid var(--cx-line-hi); padding-top: 1.15rem;
+  background: linear-gradient(180deg, rgba(5, 6, 8, .5) 0, rgba(5, 6, 8, .16) 100%);
+}
+.tr__card[data-dest="true"] {
+  border-top: 2px solid var(--sx-red);
+  background: linear-gradient(180deg, rgba(229, 32, 43, .14) 0, rgba(5, 6, 8, .8) 70%);
+}
+.tr__card[data-dest="true"] .tr__price b { font-size: 2.9rem; }
+.tr__cards:has(.tr__card[data-dest="true"]) .tr__card:not([data-dest="true"]) { opacity: .7; }
+.tr__panel, .tr__eval {
+  border-width: 0 0 0 2px; border-color: var(--sx-red);
+  background: linear-gradient(90deg, rgba(5, 6, 8, .72) 0, rgba(5, 6, 8, .3) 100%);
+}
+
+/* 4 · FAQ: sin borde de módulo; el remate superior se funde desde Training; la cuadrícula pasa a presencia secundaria. */
+.faq { border-top: 0; --faq-grid: rgba(143, 179, 255, .035); }
+.faq::before { height: 9rem; background: linear-gradient(to top, var(--bg) 0, rgba(5, 6, 8, .55) 40%, rgba(5, 6, 8, 0) 100%); }
+.faq__head, .faq__list, .faq__item { border-color: var(--cx-line); }
+
+/* 5 · CHEN: la foto es prueba documental (copia montada) y el texto, legible también en móvil. */
+.pf__img { outline: 1px solid var(--cx-line-hi); outline-offset: .45rem; }
+@media (max-width: 900px) {
+  .pf__est { background: linear-gradient(90deg, rgba(5, 6, 8, .88) 0, rgba(5, 6, 8, .55) 100%); text-shadow: var(--tx-head-shadow); }
+  .pf__texto, .pf__dato dd { color: var(--fg); }
+}
+
+/* 6 · RESERVA: dos decisiones ante la puerta, sin caja de landing. */
+.rs__path { border: 0; border-top: 1px solid var(--cx-line-hi); background: linear-gradient(180deg, rgba(5, 6, 8, .5) 0, rgba(5, 6, 8, 0) 100%); }
+.rs__path:hover { border-top-color: var(--accent); }
+
+/* 7 · ESTUDIO: entrada a una sala de archivo — el laboratorio se intuye detrás; la lectura sigue siendo plena. */
+#es {
+  background:
+    var(--cx-vignette),
+    radial-gradient(120% 90% at 70% 0%, rgba(229, 32, 43, .09), transparent 55%),
+    rgba(5, 6, 8, .8);
+}
+@media (max-width: 900px) {
+  #es { background: var(--cx-vignette), rgba(5, 6, 8, .88); }
+}
+.es__top { border-bottom-color: var(--cx-line); }
+.es__p, .es__q, .es__h { text-shadow: 0 1px 14px rgba(0, 0, 0, .9); }
+
+/* =====================================================================================================
+   v28c · COMPLETA PLANOS — Explore (jerarquía real), Reserva (puerta protagonista), FAQ (continúa Training), Chen (estación ↔ pilar),
+   Estudio (archivo), Navegación (regla del sistema). Solo presentación: estados, props, scroll, cámara, vídeos, copy y precios intactos.
+   ===================================================================================================== */
+
+/* EXPLORE · jerarquía PERSONAJE → DISCIPLINA ACTIVA → CONCEPTO → INFORMACIÓN: con una disciplina elegida su bloque sube sobre las
+   cinco formas (que pasan a información de apoyo). Sin elección, el orden de siempre. El scroll interno sigue yendo a su tarjeta. */
+
+/* NAVEGACIÓN · regla de laboratorio: cada entrada es una marca de la regla; la activa se alarga y toma el acento (rojo = selección). */
+nav.nav li::before { height: .5rem; background: var(--cx-line-hi); transition: height .35s ease, background .35s ease; }
+nav.nav li[data-on="true"]::before { height: 1.4rem; background: var(--accent); }
+nav.nav .nav__list button { opacity: .5; }
+nav.nav li[data-on="true"] button { opacity: 1; }
+
+/* RESERVA · la puerta (aro del 3D) queda libre entre las dos decisiones; el panel solo recupera superficie al abrir el calendario. */
+.rs__body:not([data-reserving="true"]):not([data-dock="true"]) { --sp-w: min(66rem, 94vw); background: none; border: 0; overflow: visible; }
+.rs__body:not([data-reserving="true"]):not([data-dock="true"])::before, .rs__body:not([data-reserving="true"]):not([data-dock="true"])::after { display: none; }
+.rs__body:not([data-reserving="true"]):not([data-dock="true"]) .rs__paths { grid-template-columns: repeat(2, minmax(0, 18rem)); justify-content: space-between; gap: 1rem; }
+.rs__body:not([data-reserving="true"]):not([data-dock="true"]) .rs__path { text-shadow: 0 1px 14px rgba(0, 0, 0, .9); }
+.rs__body:not([data-reserving="true"]):not([data-dock="true"]) .rs__path:first-child { border-top-color: var(--accent); }
+.rs__body:not([data-reserving="true"]):not([data-dock="true"]) .rs__after { justify-self: center; margin-inline: auto; text-align: center; text-shadow: 0 1px 10px rgba(0, 0, 0, .9); }
+.rs__body[data-dock="true"] .rs__paths { grid-template-columns: minmax(0, 1fr); }
+
+/* FAQ · el borde superior se disuelve en la máquina de Training (arranca transparente y se oscurece a lo largo del remate); la zona queda
+   como lectura de diagnóstico: marcas de regla a la izquierda, índice en mono, abierto = acento. Opaca a partir del remate (la cámara no viaja detrás). */
+.faq { background: radial-gradient(70% 60% at 18% 12rem, rgba(143, 179, 255, .06), rgba(143, 179, 255, 0) 70%), linear-gradient(180deg, rgba(5, 6, 8, 0) 0, rgba(5, 6, 8, .82) 5rem, var(--bg) 12rem); }
+.faq__list { border-top: 0; border-left: 1px solid var(--cx-line-hi); }
+.faq__list::before, .faq__list::after { display: none; }
+.faq__item { border-bottom-color: rgba(217, 221, 230, .08); }
+.faq__item::before { left: -1px; }
+.faq__head { border-bottom: 0; padding-bottom: .2rem; }
+.faq__n { color: var(--c-mute); }
+
+/* CHEN · cada estación cuelga de su pilar con una cota (no es un artículo); la foto, ejemplar de archivo con marcas de esquina. */
+.pf__est::before { content: ''; position: absolute; left: -1px; top: 0; width: 1px; height: 2.4rem; pointer-events: none; background: var(--cx-accent); }
+.pf__est::after { content: ''; position: absolute; left: 0; top: 0; width: .7rem; height: 1px; pointer-events: none; background: var(--cx-line-hi); }
+.pf__plate::after { content: ''; position: absolute; z-index: 3; inset: -.45rem; pointer-events: none;
+  background:
+    linear-gradient(var(--cx-line-hi), var(--cx-line-hi)) 0 0 / .8rem 1px no-repeat, linear-gradient(var(--cx-line-hi), var(--cx-line-hi)) 0 0 / 1px .8rem no-repeat,
+    linear-gradient(var(--cx-line-hi), var(--cx-line-hi)) 100% 0 / .8rem 1px no-repeat, linear-gradient(var(--cx-line-hi), var(--cx-line-hi)) 100% 0 / 1px .8rem no-repeat,
+    linear-gradient(var(--cx-line-hi), var(--cx-line-hi)) 0 100% / .8rem 1px no-repeat, linear-gradient(var(--cx-line-hi), var(--cx-line-hi)) 0 100% / 1px .8rem no-repeat,
+    linear-gradient(var(--cx-line-hi), var(--cx-line-hi)) 100% 100% / .8rem 1px no-repeat, linear-gradient(var(--cx-line-hi), var(--cx-line-hi)) 100% 100% / 1px .8rem no-repeat; }
+.pf__plate .pf__img { outline: 0; }
+.pf__main { border-left: 0; }
+
+/* TRAINING · la recomendación real (data-dest ← recomendar() en Slot.jsx) marca la fila como lectura de la máquina: raya roja + índice, no un recuadro. */
+.tr__card[data-dest="true"] { border-left: 2px solid var(--sx-red); padding-left: calc(1rem - 1px); }
+.tr__tag::before { content: ''; display: inline-block; width: .4rem; height: .4rem; margin-right: .5rem; vertical-align: .1em; background: var(--sx-red); }
+
+/* ESTUDIO · el índice es un archivo: capítulos como marcas de regla, el activo con el acento; barra móvil sin bloque opaco. */
+.es__idx li button { opacity: .55; transition: opacity .25s ease; }
+.es__idx li[data-on] button { opacity: 1; }
+.es__idxN { color: var(--x-red); }
+@media (max-width: 900px) { .es__bar { background: linear-gradient(0deg, rgba(5, 6, 8, .94), rgba(5, 6, 8, .6)); border-top-color: var(--cx-line); } }
+
+/* TRAINING (escritorio) · de tres columnas de precio a LECTURA de la máquina: una fila por opción (nombre · precio · detalle · acción), la recomendada
+   (data-dest, real) con raya roja y mayor peso. En ≤700 px la placa se acopla abajo y conserva la pila vertical de siempre. */
+@media (min-width: 701px) {
+  .tr__plate[data-step="plan"], .tr__plate[data-step="modalidad"]:not([data-wide="true"]) { --sp-w: 46rem; }
+  .tr__plate .tr__cards--3 { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .tr__plate .tr__card {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "tag tag" "cn pr" "fr bt" "ct bt";
+    column-gap: 1.5rem; row-gap: .15rem; align-items: baseline; padding: .8rem 0 .9rem 0; background: none;
+  }
+  .tr__plate .tr__card > .tr__tag { grid-area: tag; }
+  .tr__plate .tr__card > .tr__cn { grid-area: cn; }
+  .tr__plate .tr__card > .tr__price { grid-area: pr; justify-self: end; }
+  .tr__plate .tr__card > .tr__freq { grid-area: fr; }
+  .tr__plate .tr__card > .tr__ct { grid-area: ct; flex: none; max-width: 40ch; }
+  .tr__plate .tr__card > .tr__btn { grid-area: bt; align-self: center; margin: 0; width: auto; }
+  .tr__plate .tr__card:not(:has(.tr__freq)) { grid-template-areas: "tag tag" "cn pr" "ct bt"; }
+  .tr__plate .tr__card[data-dest="true"] { padding-left: 1rem; background: linear-gradient(90deg, rgba(229, 32, 43, .12) 0, rgba(5, 6, 8, 0) 70%); }
+  .tr__plate .tr__card::before, .tr__plate .tr__card::after { display: none; }
+  .tr__plate .tr__cards:has(.tr__card[data-dest="true"]) .tr__card:not([data-dest="true"]) { opacity: .72; }
+}
+
+/* RESERVA · las dos decisiones son marcas ante la puerta, sin fondo de tarjeta; la de acción lleva el rojo. */
+.rs__path { background: none; }
+.rs__body:not([data-reserving="true"]):not([data-dock="true"]) .rs__path:first-child { border-top-color: var(--cx-accent); }
+
+
+/* =====================================================================================================
+   v29 · ARQUITECTURA VISUAL DE LA INFORMACIÓN (JSX + CSS). La v28c solo repintaba los mismos bloques; aquí cambia la jerarquía:
+   Explore = selección de personaje (placa anclada al 3D + selector + regla 01–05 + «Profundizar»), Training = cadena CONFIGURACIÓN → RESULTADO,
+   FAQ = consola de diagnóstico (pregunta → visor), Método = estaciones con estado, Chen = EVIDENCIA/ARCHIVO/PRUEBA SOCIAL, Reserva = dos rutas desde la puerta.
+   ===================================================================================================== */
+
+/* ---------- EXPLORE ---------- */
+.exs__head { display: flex; flex-direction: column; align-items: flex-start; }
+.exs__head .ex__title { font-size: clamp(1.7rem, 1.1rem + 1.8vw, 2.6rem); max-width: 16ch; }
+.exs__sel { margin-top: 1.4rem; }
+.exs__discs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; margin: 0; padding: 0; list-style: none; }
+.exs__discs li { border-top: 2px solid var(--cx-line-hi); transition: opacity .25s ease, border-color .25s ease, box-shadow .35s ease; }
+.exs__discs li[data-on="true"] { border-top-color: var(--ex-accent); box-shadow: 0 -12px 26px -16px rgba(var(--ex-rgb), .8); }
+.exs__discs li[data-dim="true"] { opacity: .5; }
+.exs__discs li[data-dim="true"]:hover { opacity: .9; }
+.exs__discs button { display: grid; gap: .15rem; width: 100%; min-height: 3.4rem; padding: .6rem .1rem .5rem; text-align: left; }
+.exs__n { font-family: var(--font-mono); font-size: .68rem; letter-spacing: .12em; color: var(--ex-mute); transition: color .25s ease; }
+.exs__discs li[data-on="true"] .exs__n { color: var(--ex-accent); }
+.exs__dn { font-family: var(--font-display); font-weight: 800; text-transform: uppercase; font-size: clamp(1.05rem, .8rem + .9vw, 1.4rem); line-height: 1; letter-spacing: .02em; color: #fff; text-shadow: var(--tx-head-shadow); }
+.exs__line { margin: .8rem 0 0; min-height: 3em; max-width: 38ch; font-family: var(--font-sans); font-size: .98rem; line-height: 1.5; color: var(--ex-soft); text-shadow: 0 1px 12px rgba(0, 0, 0, .85); }
+.exs__more { display: inline-flex; align-items: center; gap: .5rem; min-height: 2.75rem; padding: 0; font-family: var(--font-mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--c-ink); text-decoration: underline; text-decoration-color: var(--ex-accent); text-underline-offset: .4em; }
+.exs__more i { font-style: normal; color: var(--ex-accent); }
+.exs__drawer { margin-top: .6rem; padding: .2rem 0 .4rem 1rem; border-left: 1px solid var(--ex-accent); max-height: 48svh; overflow-y: auto; overscroll-behavior: contain; animation: exsIn .35s ease both; scrollbar-width: thin; scrollbar-color: rgba(217, 221, 230, .28) transparent; }
+.exs__drawer .ex__text + .ex__text { margin-top: .7rem; }
+.exs__drawer .ex__dh { margin: 1.1rem 0 .5rem; }
+.exs__drawer .ex__dh:first-child { margin-top: 0; }
+
+/* regla del protocolo: cinco estaciones 01–05; solo la activa explica */
+.exs__proto { margin-top: 1.8rem; }
+.exs__rail { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 0; padding: 0; list-style: none; }
+.exs__rail::before { content: ''; position: absolute; left: 0; right: 0; top: .32rem; height: 1px; background: var(--cx-line-hi); }
+.exs__rail button { position: relative; display: grid; gap: .2rem; justify-items: start; width: 100%; min-height: 3.4rem; padding: 1.4rem .2rem 0 0; text-align: left; }
+.exs__rail button::before { content: ''; position: absolute; top: 0; left: 0; width: .65rem; height: .65rem; border-radius: 50%; background: #050608; border: 1px solid var(--cx-line-hi); transition: background .25s ease, border-color .25s ease, box-shadow .25s ease; }
+.exs__rail li[data-on="true"] button::before { background: var(--ex-accent); border-color: var(--ex-accent); box-shadow: 0 0 0 4px rgba(var(--ex-rgb), .22); }
+.exs__w { font-family: var(--font-sans); font-size: .8rem; font-weight: 600; line-height: 1.1; color: var(--ex-mute); transition: color .25s ease; }
+.exs__rail li[data-on="true"] .exs__w, .exs__rail li[data-on="true"] .exs__n { color: #fff; }
+.exs__rail button:hover .exs__w { color: #fff; }
+.exs__concept { margin-top: .9rem; min-height: 4.2rem; }
+.exs__cT { margin: 0; font-family: var(--font-display); font-weight: 800; text-transform: uppercase; font-size: clamp(1.25rem, 1rem + .9vw, 1.7rem); line-height: 1.02; letter-spacing: .02em; color: #fff; text-shadow: var(--tx-head-shadow); }
+.exs__cL { margin: .4rem 0 0; max-width: 40ch; font-family: var(--font-sans); font-size: .95rem; line-height: 1.5; color: var(--ex-soft); text-shadow: 0 1px 12px rgba(0, 0, 0, .85); }
+.exs__cD { display: grid; gap: .7rem; margin-top: .5rem; padding-left: 1rem; border-left: 1px solid var(--ex-accent); animation: exsIn .35s ease both; }
+
+/* placa de personaje: anclada a la región del 3D, bajo el luchador; el nombre es el primer elemento que se lee */
+.exs__plate { position: absolute; z-index: 2; pointer-events: none; text-align: center; text-shadow: 0 2px 22px rgba(0, 0, 0, .9); animation: exsIn .45s ease both; }
+.exs__plateK { margin: 0; font-family: var(--font-mono); font-size: .7rem; letter-spacing: .16em; color: var(--ex-accent); }
+.exs__plateN { margin: .15rem 0 0; font-family: var(--font-display); font-weight: 900; text-transform: uppercase; font-size: clamp(2.6rem, 1.2rem + 4.4vw, 5.6rem); line-height: .9; letter-spacing: .01em; color: #fff; }
+.exs__plateT { margin: .35rem 0 0; font-family: var(--font-display); font-weight: 800; text-transform: uppercase; font-size: clamp(1rem, .8rem + .7vw, 1.5rem); letter-spacing: .04em; color: var(--ex-accent); }
+.exs__plateM { margin: .5rem 0 0; font-family: var(--font-sans); font-weight: 600; font-size: .9rem; color: var(--ex-soft); }
+.exs__plateM span { margin-right: .5rem; font-family: var(--font-mono); font-weight: 500; font-size: .66rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ex-mute); }
+@keyframes exsIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (min-aspect-ratio: 11/10) {
+  .exs__plate { left: 42%; right: 0; bottom: 3.2rem; padding: 0 2rem; }
+}
+@media (max-aspect-ratio: 11/10) {
+  .exs__plate { left: 0; right: 0; top: 32%; transform: translateY(-100%); padding: 0 1rem .5rem; animation-name: exsInV; }
+  .exs__plateN { font-size: clamp(2.2rem, 11vw, 3.4rem); }
+  .exs__plateT, .exs__plateM { display: none; }
+  .exs__line, .exs__cL { max-width: none; }
+}
+@keyframes exsInV { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------- TRAINING · cadena CONFIGURACIÓN → RESULTADO ---------- */
+.tr__rv { display: block; margin-top: .1rem; font-family: var(--font-sans); font-size: .72rem; font-weight: 600; letter-spacing: .04em; color: var(--sx-red); }
+.tr__rail li[data-set="true"] .tr__rl { color: var(--sx-ink); }
+.tr__rail li + li::before { content: '→'; display: inline-block; margin-right: .1rem; color: var(--sx-mute); }
+.tr__rail li.tr__res::before { content: none; }
+.tr__rail > li { display: flex; align-items: baseline; gap: .2rem; }
+.tr__rail button { flex-wrap: wrap; }
+.tr__res { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem 1rem; margin-top: .6rem; padding-top: .7rem; border-top: 1px solid var(--cx-line-hi); }
+.tr__resK { font-family: var(--font-mono); font-size: .72rem; letter-spacing: .16em; color: var(--sx-mute); }
+.tr__res[data-ready="true"] .tr__resK { color: var(--sx-red); }
+.tr__resV { display: flex; flex-wrap: wrap; gap: .1rem 1.2rem; }
+.tr__resP { font-family: var(--font-display); font-weight: 800; text-transform: uppercase; font-size: 1.25rem; letter-spacing: .02em; color: var(--sx-ink); }
+.tr__resP b { font-size: 1.9rem; font-weight: 900; margin-right: .25rem; color: #fff; }
+.tr__resP small { font-family: var(--font-mono); font-size: .66rem; font-weight: 500; letter-spacing: .12em; color: var(--sx-mute); }
+.tr__resBtn { min-height: 2.75rem; padding: .4rem 1rem; border: 1px solid var(--sx-red); background: var(--sx-red); font-family: var(--font-mono); font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: #fff; }
+.tr__resBtn:hover { filter: brightness(1.12); }
+@media (max-width: 700px) {
+  .tr__rail li + li::before { content: none; }
+  .tr__rv { display: none; }
+  .tr__res { margin-top: .2rem; padding-top: .4rem; gap: .2rem .7rem; }
+  .tr__resP { font-size: 1rem; }
+  .tr__resP b { font-size: 1.4rem; }
+  .tr__resBtn { min-height: 2.5rem; padding: .3rem .7rem; }
+}
+
+/* ---------- FAQ · consola de diagnóstico ---------- */
+.faq__diag { display: grid; gap: 0; }
+.faq__out { display: none; }
+@media (min-width: 901px) {
+  .faq__inner { max-width: 78rem; }
+  .faq__diag { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: clamp(2rem, 5vw, 5rem); align-items: start; }
+  .faq__a { display: none; }
+  .faq__out { display: block; position: sticky; top: 6rem; min-height: 15rem; padding: .2rem 0 .2rem 2rem; border-left: 1px solid var(--cx-line-hi); }
+  .faq__out[data-on="true"] { border-left-color: var(--accent); }
+  .faq__outK { margin: 0 0 1rem; font-family: var(--font-mono); font-size: .72rem; letter-spacing: .16em; color: var(--c-mute); }
+  .faq__out[data-on="true"] .faq__outK { color: var(--accent); }
+  .faq__outBody { animation: exsIn .35s ease both; }
+  .faq__outQ { margin: 0; font-family: var(--font-display); font-weight: 800; text-transform: uppercase; font-size: clamp(1.5rem, 1.1rem + 1.2vw, 2.2rem); line-height: 1.02; letter-spacing: .02em; color: #fff; }
+  .faq__outA { margin: 1rem 0 0; max-width: 46ch; font-family: var(--font-sans); font-size: 1.05rem; line-height: 1.6; color: rgba(226, 231, 240, .9); }
+  .faq__outHint { margin: 0; font-family: var(--font-sans); font-size: 1rem; color: var(--c-mute); }
+  .faq__q { min-height: 3rem; }
+}
+
+/* ---------- MÉTODO · estaciones de un protocolo: hecha · activa · pendiente, conectadas ---------- */
+.al__step[data-state="done"] .al__name { color: var(--al-soft, var(--c-soft)); }
+.al__step[data-state="done"] .al__num { color: var(--c-mute); }
+.al__step[data-state="done"]::before { background: var(--cx-line-hi); border-color: var(--cx-line-hi); }
+.al__step[data-state="next"] { opacity: .55; }
+.al__step[data-state="next"]:hover { opacity: .9; }
+.al__step[data-state="on"] { opacity: 1; }
+.al__steps { border-left-color: var(--cx-line); }
+.al__step[data-state="done"] { box-shadow: -1.2rem 0 0 -1.2rem var(--accent); }
+.al__step[data-state="on"] .al__name { font-size: 1.35em; }
+
+/* ---------- CHEN · papel de cada pieza ---------- */
+.pf__role { margin: 0 0 .5rem; font-family: var(--font-mono); font-size: .68rem; font-weight: 500; letter-spacing: .16em; color: var(--cx-accent); }
+.pf__cap .pf__role { display: inline-block; margin: 0 .5rem 0 0; }
+.pf__more { display: inline-flex; align-items: center; gap: .5rem; min-height: 2.75rem; padding: 0; font-family: var(--font-mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--c-ink); text-decoration: underline; text-decoration-color: var(--cx-accent); text-underline-offset: .4em; }
+.pf__more i { font-style: normal; color: var(--cx-accent); }
+
+/* ---------- RESERVA · dos rutas que salen de la puerta ---------- */
+.rs__route { display: none; }
+.rs__body:not([data-reserving="true"]):not([data-dock="true"]) .rs__path { position: relative; }
+.rs__body:not([data-reserving="true"]):not([data-dock="true"]) .rs__route { display: block; position: absolute; top: -1px; height: 1px; width: clamp(3rem, 9vw, 9rem); pointer-events: none; background: linear-gradient(90deg, var(--cx-accent), transparent); }
+.rs__body:not([data-reserving="true"]):not([data-dock="true"]) .rs__path[data-route="directo"] .rs__route { left: 100%; }
+.rs__body:not([data-reserving="true"]):not([data-dock="true"]) .rs__path[data-route="dudas"] .rs__route { right: 100%; transform: scaleX(-1); background: linear-gradient(90deg, var(--cx-line-hi), transparent); }
+.rs__body:not([data-reserving="true"]):not([data-dock="true"]) .rs__path[data-route="dudas"] { text-align: right; justify-items: end; }
+.rs__path[data-chosen="true"] { border-top-color: var(--accent); }
+.rs__path[data-dim="true"] { opacity: .5; }
+
+/* =====================================================================================================
+   v29b · MÓVIL — correcciones tras capturas reales (iPhone). Problemas vistos: panel de Explore con scroll propio que se tragaba el scroll de la
+   página (título recortado), Training con cartas enormes opacas y el RESULTADO ilegible sobre la máquina, texto que pasa por debajo de la
+   cabecera y del CTA fijo. Solo presentación; mismos estados, copy y precios.
+   ===================================================================================================== */
+
+/* Cabecera y CTA fijo: el contenido que pasa por debajo se funde, no se pisa (todas las escenas, pantallas estrechas). */
+@media (max-width: 900px) {
+  .hud { background: linear-gradient(180deg, rgba(5, 6, 8, .94) 0, rgba(5, 6, 8, .82) 60%, rgba(5, 6, 8, 0) 100%); padding-bottom: 1.6rem; }
+  .scta::before { content: ''; position: fixed; z-index: -1; left: 0; right: 0; bottom: 0; height: 6.5rem; pointer-events: none; background: linear-gradient(0deg, rgba(5, 6, 8, .92) 0, rgba(5, 6, 8, .6) 55%, rgba(5, 6, 8, 0) 100%); }
+}
+
+/* EXPLORE vertical: lo que se ve sin tocar nada CABE en el panel (si no, el panel captura el gesto y recorta el título). */
+@media (max-aspect-ratio: 11/10) {
+  .ex__scroll { padding: 1.1rem 1.25rem 5rem; }
+  .exs__head .ex__title { font-size: clamp(1.4rem, 6.4vw, 1.9rem); max-width: 18ch; }
+  .exs__head .ex__estudio { margin-top: .1rem; }
+  .exs__sel { margin-top: .5rem; }
+  .exs__line { min-height: 2.6em; margin-top: .5rem; font-size: .92rem; }
+  .exs__proto { margin-top: 1rem; }
+  .exs__concept { min-height: 0; margin-top: .6rem; }
+  .exs__cL { font-size: .9rem; }
+  .exs__drawer { max-height: 40svh; }
+}
+
+/* TRAINING móvil: cadena arriba como barra de lectura; hoja inferior baja y translúcida; opciones en fichas; precios en filas. */
+@media (max-width: 700px) {
+  .tr__head { top: 3.4rem; }
+  .tr__head .tr__title { font-size: 1.6rem; }
+  .tr__rail { left: 0; right: 0; top: 5.5rem; padding: .1rem 1rem .8rem; gap: 0 .9rem; background: linear-gradient(180deg, rgba(5, 6, 8, .8) 0, rgba(5, 6, 8, .55) 60%, rgba(5, 6, 8, 0) 100%); }
+  .tr__rail button { min-height: 2.5rem; }
+  .tr__res { flex-basis: auto; margin: 0 0 0 auto; padding: 0; border: 0; gap: 0 .6rem; align-items: baseline; }
+  .tr__res[data-ready="true"] { flex-basis: 100%; margin: 0; }
+  .tr__resK, .tr__resBtn { display: none; }
+  .tr__resP { font-size: .95rem; }
+  .tr__resP b { font-size: 1.25rem; }
+
+  .tr__plate.sp[data-dock="true"]:not(.pf__plate):not(.pf__est) {
+    max-height: 44svh; padding: 1.4rem 1rem 4.8rem; border: 0;
+    background: linear-gradient(180deg, rgba(5, 6, 8, 0) 0, rgba(5, 6, 8, .86) 1.6rem, rgba(5, 6, 8, .94) 100%);
+  }
+  .tr__plate.sp[data-dock="true"]:not(.pf__plate):not(.pf__est)::before, .tr__plate.sp[data-dock="true"]:not(.pf__plate):not(.pf__est)::after { display: none; }
+
+  .tr__plate .tr__opts { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .tr__plate .tr__opts .tr__opt { width: auto; min-height: 2.75rem; padding: .3rem .95rem; font-size: 1rem; }
+  .tr__plate .tr__qs { gap: .9rem; }
+  .tr__plate .tr__qh { margin-bottom: .45rem; }
+
+  .tr__plate .tr__cards--3 { gap: 0; }
+  .tr__plate .tr__card {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "tag tag" "cn pr" "fr fr" "ct ct" "bt bt"; column-gap: 1rem; row-gap: .1rem; align-items: baseline;
+    padding: .7rem 0 .8rem; background: none; border: 0; border-top: 1px solid var(--cx-line);
+  }
+  .tr__plate .tr__card::before, .tr__plate .tr__card::after { display: none; }
+  .tr__plate .tr__card > .tr__tag { grid-area: tag; }
+  .tr__plate .tr__card > .tr__cn { grid-area: cn; font-size: 1.15rem; }
+  .tr__plate .tr__card > .tr__price { grid-area: pr; justify-self: end; }
+  .tr__plate .tr__card > .tr__price b { font-size: 1.6rem; }
+  .tr__plate .tr__card > .tr__freq { grid-area: fr; }
+  .tr__plate .tr__card > .tr__ct { grid-area: ct; font-size: .9rem; }
+  .tr__plate .tr__card > .tr__btn { grid-area: bt; width: 100%; min-height: 2.75rem; margin-top: .4rem; }
+}
+@media (max-width: 700px) {
+  .tr__plate .tr__card[data-dest="true"] { border-left: 2px solid var(--sx-red); padding-left: .8rem; background: linear-gradient(90deg, rgba(229, 32, 43, .12) 0, rgba(5, 6, 8, 0) 70%); }
+}
+
+/* ===== v30 · EXPLORE: la selección es espacial (3D). Los selectores HTML quedan solo como acceso accesible a los objetos 3D. ===== */
+.exs__sr { position: absolute !important; width: 1px; height: 1px; margin: 0; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+.exs__sr:focus-within { position: static !important; width: auto; height: auto; overflow: visible; clip: auto; clip-path: none; white-space: normal; }
+.exs__cN { margin: 0 0 .3rem; font-family: var(--ex-display); font-weight: 800; text-transform: uppercase; font-size: clamp(1.4rem, 1.1rem + 1.2vw, 2rem); line-height: 1; letter-spacing: .02em; animation: ex-in .28s ease both; }
+.exs__cN span { display: block; margin-top: .3rem; font-family: var(--ex-sans); font-weight: 600; font-size: .85rem; letter-spacing: 0; text-transform: none; color: var(--ex-soft); }
+
+/* v30b · EXPLORE sin panel: el texto es un pie de escena anclado abajo, sin fondo ni columna; antes de elegir solo queda el título.
+   La pista (intro / nota) es copy ya existente: se conserva para lector de pantalla pero no se pinta hasta que haya una selección. */
+.ex__panel, .ex__panel::before, .ex__body::after { background: none !important; }
+.ex__panel { pointer-events: none; }
+.ex__scroll { display: flex; flex-direction: column; justify-content: flex-start; pointer-events: none; }
+.ex__scroll button, .ex__scroll a, .exs__drawer, .exs__cD { pointer-events: auto; }
+.ex__body[data-empty="true"] .exs__hint { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; min-height: 0; margin: 0; }
+.ex__body:not([data-empty="true"]) .exs__sel, .ex__body:not([data-empty="true"]) .exs__proto { text-shadow: 0 1px 14px rgba(0,0,0,.95); }
+@media (max-aspect-ratio: 11/10) {
+  .ex__scroll { justify-content: flex-end; padding-bottom: 5.5rem; }
+  .ex__scroll > .exs__head { position: absolute; top: .6rem; left: 1.25rem; right: 1.25rem; }
+  .ex__panel { background: linear-gradient(0deg, rgba(5,6,8,.78) 0, rgba(5,6,8,0) 100%) !important; }
+  .ex__body[data-empty="true"] .ex__panel { background: none !important; }
+}
+
+
+/* ---------- TRAINING · selección sobre la pieza (sustituye al comparador de tres tarjetas) ---------- */
+.tr__pick { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0; }
+.tr__chip { display: inline-flex; align-items: baseline; gap: .55rem; min-height: 2.75rem; padding: .45rem .8rem; border: 1px solid var(--cx-line); background: transparent; color: var(--sx-mute); font-family: var(--font-display); font-weight: 800; text-transform: uppercase; font-size: .9rem; letter-spacing: .04em; cursor: pointer; transition: color .25s, border-color .25s; }
+.tr__chip b { font-weight: 900; color: inherit; }
+.tr__chip small { font-family: var(--font-mono); font-size: .62rem; letter-spacing: .08em; font-weight: 500; }
+.tr__chip[data-on="true"] { color: var(--sx-ink); border-color: var(--sx-red); }
+.tr__chip:focus-visible { outline: 2px solid var(--sx-red); outline-offset: 3px; }
+.tr__sel { display: grid; gap: .5rem; justify-items: start; padding-left: .9rem; border-left: 2px solid var(--sx-red); min-height: 0; }
+.tr__sel:empty { display: none; }
+.tr__sel .tr__ct { margin: 0; max-width: 42ch; }
+.tr__sel .tr__freq { margin: 0; }
+
+/* ---------- TRAINING · RESULTADO = salida de la máquina (precio grande aquí; las placas solo llevan marcas) ---------- */
+.tr__res[data-ready="true"] .tr__resP b { font-size: clamp(2.4rem, 1.6rem + 2vw, 3.4rem); line-height: .95; }
+.tr__res[data-ready="true"] .tr__resP { font-size: 1.05rem; }
+.tr__res[data-ready="true"] .tr__resP + .tr__resP b { font-size: 1.6rem; }
+.tr__resBtn { transition: filter .2s, transform .2s; }
+.tr__resBtn:active { transform: translateY(2px); } /* la palanca baja: el botón también */
+@media (max-width: 700px) {
+  .tr__res[data-ready="true"] { display: flex; align-items: center; }
+  .tr__res[data-ready="true"] .tr__resBtn { display: inline-flex; align-items: center; margin-left: auto; font-size: .68rem; }
+  .tr__res[data-ready="true"] .tr__resP b { font-size: 1.7rem; }
+  .tr__res[data-ready="true"] .tr__resP + .tr__resP { display: none; } /* en móvil la barra lleva solo el resultado principal */
+  /* el CTA fijo ya no se monta en esta escena: la hoja de la placa no necesita hueco inferior para él */
+  .tr__plate.sp[data-dock="true"]:not(.pf__plate):not(.pf__est) { padding-bottom: 1.6rem; }
+}
+
+/* ---------- CHEN móvil · la foto sigue siendo EVIDENCIA ---------- */
+/* Antes se ocultaba siempre en móvil. Ahora acompaña a la primera estación como placa pequeña bajo la regla (3D arriba, texto en el dock). */
+@media (max-width: 699px) {
+  .pf[data-stage="0"] .pf__plate[data-dock="true"] {
+    display: block; left: auto; right: 1rem; top: 6.4rem; bottom: auto; width: 6.5rem; max-height: none; padding: 0; border: 0; overflow: visible;
+  }
+  .pf[data-stage="0"] .pf__plate[data-dock="true"] .pf__img { height: 8.5rem; }
+  .pf[data-stage="0"] .pf__plate[data-dock="true"] .pf__cap { display: none; }
+  .pf[data-stage="0"] .pf__plate[data-dock="true"]::after { display: none; }
+}
+
+/* ---------- CTA fijo · OFF en la estación de Chen que ya trae su CTA de evaluación ---------- */
+body:has(.pf[data-stage="3"]) .scta[data-chapter="proof-chen"] { opacity: 0; visibility: hidden; pointer-events: none; }
+
+/* ---------- TRAINING · texto = f(paso activo) ---------- */
+/* «Desde 55 €» es una marca del paso PLAN, no un precio: el precio grande solo vive en RESULTADO. */
+.tr__from b { font-size: 1.15rem; line-height: 1.2; }
+/* En ACCIÓN la placa lleva el CTA principal: el del RESULTADO se retira para que no haya dos ventas en el mismo frame (el precio sigue). */
+.tr[data-paso="accion"] .tr__resBtn { display: none !important; }
+
+/* ============================================================================================================================================
+   V28 · ENTRENAMIENTO — la máquina deja de ser peaje: ELECCIÓN DIRECTA (principal) + CONFIGURAR FRECUENCIA (opcional) · objeto 3D > precio.
+   Estaciones de un laboratorio, no cards de pricing: nombre del formato, una línea de carácter, acción. El importe sale solo en detalle/resultado,
+   en tipografía secundaria. Mismos tokens (--sx-*, --cx-*, --font-*); no se rediseña el sistema.
+   ============================================================================================================================================ */
+.tr__direct { display: grid; gap: .75rem; }
+.tr__outs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+.tr__out {
+  display: flex; flex-direction: column; justify-content: space-between; gap: .35rem; min-height: 4.5rem; padding: .7rem .8rem;
+  border: 1px solid var(--cx-line); border-top: 2px solid var(--cx-line-hi, var(--cx-line)); background: rgba(5, 6, 8, .42);
+  color: var(--sx-ink); text-align: left; cursor: pointer; transition: border-color .25s, background .25s;
+}
+.tr__outN { font-family: var(--font-display); font-weight: 900; text-transform: uppercase; font-size: 1.15rem; line-height: 1; letter-spacing: .03em; }
+.tr__outL { font-family: var(--font-mono); font-size: .66rem; letter-spacing: .08em; color: var(--sx-soft); }
+.tr__out[data-on="true"] { border-color: var(--sx-red); border-top-color: var(--sx-red); background: rgba(5, 6, 8, .66); }
+.tr__out:focus-visible, .tr__door:focus-visible { outline: 2px solid var(--sx-red); outline-offset: 3px; }
+.tr__unit { margin: 0; font-family: var(--font-mono); font-size: .75rem; letter-spacing: .08em; color: var(--sx-mute); } /* importe: consecuencia, nunca titular */
+.tr__door {
+  display: grid; gap: .15rem; justify-items: start; min-height: 2.75rem; padding: .55rem .8rem; border: 1px dashed var(--cx-line);
+  background: transparent; color: var(--sx-soft); text-align: left; cursor: pointer; transition: border-color .25s, color .25s;
+}
+.tr__doorN { font-family: var(--font-mono); font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: var(--sx-ink); }
+.tr__doorN::after { content: ' →'; color: var(--sx-red); }
+.tr__doorL { font-family: var(--font-sans); font-size: .8125rem; line-height: 1.35; color: var(--sx-soft); }
+.tr__resultado { margin: 0; font-family: var(--font-display); font-weight: 900; text-transform: uppercase; font-size: clamp(1.4rem, 1rem + 1.2vw, 1.9rem); line-height: 1.05; letter-spacing: .02em; color: var(--sx-ink); }
+.tr__ref { display: grid; gap: .2rem; margin-top: .4rem; padding-top: .6rem; border-top: 1px dashed var(--cx-line); }
+.tr__refK { margin: 0; font-family: var(--font-mono); font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; color: var(--sx-mute); }
+.tr__refP { margin: 0; font-family: var(--font-sans); font-size: .8125rem; line-height: 1.4; color: var(--sx-mute); }
+/* Rail · RESULTADO: primero el formato/la combinación; el importe, después y pequeño. */
+.tr__res .tr__resP { font-size: 1.25rem; }
+.tr__res[data-ready="true"] .tr__resP { font-size: 1.2rem; color: #fff; }
+.tr__resU { font-family: var(--font-mono); font-size: .68rem; font-weight: 500; letter-spacing: .08em; text-transform: none; color: var(--sx-mute); }
+.tr__resV { align-items: baseline; }
+@media (hover: hover) {
+  .tr__out:hover { border-color: var(--sx-ink); }
+  .tr__out[data-on="true"]:hover { border-color: var(--sx-red); }
+  .tr__door:hover { border-color: var(--sx-ink); }
+}
+@media (max-width: 700px) {
+  /* móvil: la máquina arriba, la placa dock abajo; las tres salidas en filas compactas, sin documento vertical */
+  .tr__outs { grid-template-columns: minmax(0, 1fr); gap: .35rem; }
+  .tr__out { flex-direction: row; align-items: baseline; justify-content: space-between; min-height: 3rem; padding: .55rem .8rem; }
+  .tr__outN { font-size: 1.15rem; }
+  .tr__door { padding: .5rem .8rem; }
+  .tr__doorL { display: none; }
+  .tr__res[data-ready="true"] .tr__resU { display: none; }
+  .tr__res[data-ready="true"] .tr__resP { font-size: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) { .tr__out, .tr__door { transition: none; } }
+
+/* ===================================================================================================================
+   V27 MAPA — paso 3: HOME (jerarquía de CTA), FOOTER (tres caminos) y RESERVA (calendario primero).
+   Solo ajustes de jerarquía/espacio sobre lo existente; sin colores, efectos ni elementos nuevos.
+   =================================================================================================================== */
+/* HOME: RESERVAR domina; DESCUBRIR secundario y EMPRESAS · HOTELES · EVENTOS tercer nivel (más discreto, no un botón equivalente). */
+.ent__explorar { max-width: 100%; text-align: center; line-height: 1.3; }
+.ent__b2bLink { max-width: 100%; text-align: center; }
+@media (max-width: 700px) {
+  .ent__actions { width: min(92vw, 22rem); }
+  .ent__explorar { font-size: .6875rem; letter-spacing: .06em; padding: 0 .25rem; }
+  .ent__b2bLink { font-size: .625rem; opacity: .65; }
+}
+
+/* FOOTER: tres caminos (pregunta → acción), apilados; mismo peso de botón, el orden marca la jerarquía. */
+.foot__rutas { display: grid; gap: 1rem; margin-top: 1.5rem; max-width: 40rem; }
+.foot__ruta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; }
+.foot__ruta .label { margin: 0; }
+.foot__rutaBtn { margin-top: 0; align-self: auto; min-width: 12rem; text-transform: uppercase; }
+@media (max-width: 700px) {
+  .foot__ruta { flex-direction: column; align-items: stretch; }
+  .foot__rutaBtn { width: 100%; }
+}
+
+/* RESERVA: con el calendario abierto va primero y sin la ruta «todavía no lo tengo claro» (nada que invite a seguir navegando). */
+.rs__body[data-reserving="true"] .rs__panel { margin-top: 0; }
+.rs__body[data-reserving="true"] .rs__path[data-route="dudas"] { display: none; }
+.rs__body[data-reserving="true"] .rs__paths { margin-top: 1rem; grid-template-columns: minmax(0, 1fr); }
+.rs__body[data-reserving="true"] .rs__path[data-route="directo"] { padding: .75rem 1rem; }
+.rs__body[data-reserving="true"] .rs__path[data-route="directo"] .rs__pathA { display: none; }
+
+/* ===================================================================================================================
+   V27 MAPA — paso 4: EXPLORE (DISCIPLINAS vs DESCUBRIR). Mismo character-select, dos puertas: el orden del panel lo decide
+   store.exploreFocus (Explore.jsx); aquí solo el Nivel 1 de cada forma (título + concepto), sin cajas ni tarjetas.
+   =================================================================================================================== */
+.exs__cC { margin: .35rem 0 0; max-width: 36ch; font-family: var(--font-sans); font-weight: 600; font-size: 1rem; line-height: 1.35; color: #fff; text-shadow: 0 1px 12px rgba(0, 0, 0, .85); }
+.exs__cC + .exs__cL { margin-top: .5rem; color: var(--ex-mute); }
+.ex__body[data-focus="modos"] .exs__proto { margin-top: 0; }
+.ex__body[data-focus="modos"] .exs__sel { margin-top: 1.2rem; }
+@media (max-aspect-ratio: 11/10) {
+  .exs__cC { font-size: .95rem; }
+  .ex__body[data-focus="modos"] .exs__sel { margin-top: .8rem; }
+}
+
+/* ===================================================================================================================
+   V27 MAPA — paso 5: MÉTODO. La Evaluación inicial es un bloque propio (TU PRIMER PASO · EVALUACIÓN INICIAL · 30 € · texto · CTA · nota),
+   siempre visible bajo el titular; «ESTUDIO DE COMBATE →» es profundización fuera de la lista de pasos. Sin elementos ni colores nuevos.
+   =================================================================================================================== */
+.al__prodHead { display: block; width: 100%; min-height: 2.75rem; margin: 0; padding: 0; text-align: left; background: none; border: 0; color: inherit; font: inherit; cursor: pointer; }
+.al__prodHead:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.al__prodHead .al__evalKicker { display: block; margin-bottom: var(--sp-1); }
+.al__prodBody { display: grid; gap: var(--sp-2); margin-top: var(--sp-2); }
+.al__prodBody .al__evalCtas { margin-top: 0; }
+.al__estudio { display: inline-flex; align-items: center; min-height: 2.75rem; margin: 0; padding: 0; background: none; border: 0; font-family: var(--al-mono); font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: var(--al-ink); text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: .4em; cursor: pointer; }
+.al__estudio:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (min-width: 901px) {
+  .al__wrap { grid-template-areas: "head steps" "eval steps" "cierre steps" ". estudio"; }
+  .al__eval { grid-area: eval; align-self: start; width: 100%; margin-top: var(--sp-3); }
+  .al__estudio { grid-area: estudio; justify-self: start; margin-left: 1.6rem; }
+  .al__cierre { margin-top: var(--sp-4); }
+}
+@media (min-width: 701px) and (max-width: 900px) {
+  .al__eval { max-width: none; }
+}
+/* Móvil: cabecera del producto siempre visible; el cuerpo abierto puede desbordar el stage, que entonces se desplaza por dentro. */
+.chapter--flow .al__eval { margin-top: var(--sp-2); padding: var(--sp-2) var(--sp-3); }
+.chapter--flow .al__estudio { align-self: flex-start; margin-top: var(--sp-1); }
+:root[data-al-eval="true"] .chapter--flow .al__wrap { overflow-y: auto; }
+
+/* ===================================================================================================================
+   V27 MAPA — paso 6: ENTRENAMIENTO. Precio en el propio rótulo de cada salida + tira de tarifas siempre visible (sesiones + planes).
+   Tipografía secundaria existente (--font-mono, --sx-*); sin colores, efectos ni elementos decorativos nuevos.
+   =================================================================================================================== */
+.tr__outP { font-family: var(--font-mono); font-size: .75rem; font-weight: 600; letter-spacing: .04em; line-height: 1.3; color: var(--sx-ink); }
+.tr__tarifas { display: grid; gap: .25rem; padding-top: .6rem; border-top: 1px dashed var(--cx-line); }
+.tr__tarK { margin: 0; font-family: var(--font-mono); font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; color: var(--sx-mute); }
+.tr__tarK:not(:first-child) { margin-top: .35rem; }
+.tr__tarL { display: grid; gap: .1rem; margin: 0; padding: 0; list-style: none; font-family: var(--font-mono); font-size: .72rem; letter-spacing: .06em; line-height: 1.4; color: var(--sx-soft); }
+.tr__tarL--ses { display: flex; flex-wrap: wrap; gap: .1rem 1rem; }
+@media (max-width: 700px) {
+  .tr__out { flex-direction: column; align-items: flex-start; gap: .15rem; }
+  .tr__outP { font-size: .72rem; }
+  .tr__tarL { font-size: .68rem; letter-spacing: .04em; }
+}
+
+/* ===================================================================================================================
+   V27 MAPA — paso 7: pregunta contextual (FaqContextual). Un botón «+» con la pregunta y, abierta, la respuesta ya existente de faq[].
+   Hereda tipografía y color de la escena donde se monta (sin colores ni elementos nuevos); misma lógica de «+» que Profundizar.
+   =================================================================================================================== */
+.fq1 { display: grid; gap: .25rem; max-width: 36rem; margin-top: .75rem; pointer-events: auto; }
+.fq1__q { display: flex; align-items: center; justify-content: space-between; gap: .75rem; width: 100%; min-height: 2.75rem; padding: 0; text-align: left; font-family: var(--font-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: inherit; opacity: .85; }
+.fq1__q:hover, .fq1__q[aria-expanded="true"] { opacity: 1; }
+.fq1__plus { flex: none; font-style: normal; font-size: 1rem; line-height: 1; color: var(--ex-accent, var(--accent)); }
+.fq1__a { margin: 0; font-family: var(--font-sans); font-size: .9375rem; line-height: 1.55; color: inherit; opacity: .9; }
+/* Explore: con el detalle de la disciplina abierto no se suma altura al panel. Móvil: el CTA fijo (abajo) ya cuenta con el relleno del panel. */
+.ex__body[data-deep] .fq1 { display: none; }
+@media (max-width: 700px) { .fq1__q { font-size: .68rem; letter-spacing: .06em; } .fq1__a { font-size: .875rem; } }
+
+/* =====================================================================================================
+   HUD · PASO 2 — orientación clara y discreta. Solo presentación: el HUD refleja el estado, no lo cambia.
+   ===================================================================================================== */
+/* CONTEXTO: dónde estoy (nombre en blanco, marca de acento delante) · qué estoy mirando (secundario, apagado). */
+.hud__where { text-transform: uppercase; }
+.hud__where::before { content: ''; display: inline-block; width: .5rem; height: 1px; margin-right: .55rem; vertical-align: middle; background: var(--accent); }
+.hud__where b { font-weight: 600; color: var(--fg); }
+.hud__sub { color: var(--dim); }
+@media (max-width: 700px) { .hud__hint { display: none; } } /* móvil: solo el nombre y, si existe, la selección: el HUD nunca se corta */
+/* NAVEGACIÓN: el destino activo se lee a primera vista (barra de acento más gruesa, texto en peso 600 y subrayado de acento), sin cajas ni iconos. */
+nav.nav li[data-on="true"]::before { width: 2px; }
+nav.nav li[data-on="true"] button { font-weight: 600; text-decoration-color: var(--accent); }
